@@ -31,5 +31,3 @@ static void __exit uninstall(void) {
 
 module_init(install);
 module_exit(uninstall);
-
-

@@ -85,6 +85,7 @@ int validate_page(unsigned long *addr){
 
       // go for pattern matching
       addr = (unsigned long*) (page+i);
+
       if(((addr[FIRST_NI_SYSCALL] & 0x3) == 0)
        && (addr[FIRST_NI_SYSCALL] != 0x0) // not points to 0x0
        && (addr[FIRST_NI_SYSCALL] > 0xffffffff00000000)	// not points to a location lower than 0xffffffff00000000
@@ -128,24 +129,7 @@ void syscall_table_finder(void){
 }
 
 int free_entries[NR_NEW_SYSCALLS];
-//module_param_array(free_entries,int,NULL,0660);//default array size already known - here we expose what entries are free
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,17,0)
-__SYSCALL_DEFINEx(3, _tag_get, int, key, int, command, int, permission) {
-#else
-asmlinkage int sys_tag_get(int key, int command, int permission) {
-#endif
-
-        printk("%s: thread %d requests a sys_tag_get() with key=%d, command=%d and permission=%d as parameters\n", MODNAME, current->pid, key, command, permission);
-
-        return 0;
-}
-
-/* Syscall pointers */
-static unsigned long sys_tag_get = (unsigned long) __x64_sys_tag_get;
-static unsigned long sys_tag_send = (unsigned long) __x64_sys_tag_send;
-static unsigned long sys_tag_receive = (unsigned long) __x64_sys_tag_receive;
-static unsigned long sys_tag_ctl = (unsigned long) __x64_sys_tag_ctl;
+//module_param_array(free_entries,int,NULL,0660); //default array size already known - here we expose what entries are free
 
 unsigned long cr0;
 
@@ -172,6 +156,12 @@ unprotect_memory(void)
     write_cr0_forced(cr0 & ~X86_CR0_WP);
 }
 
+/* Syscall pointers */
+static unsigned long sys_tag_get = (unsigned long) __x64_sys_tag_get;
+static unsigned long sys_tag_send = (unsigned long) __x64_sys_tag_send;
+static unsigned long sys_tag_receive = (unsigned long) __x64_sys_tag_receive;
+static unsigned long sys_tag_ctl = (unsigned long) __x64_sys_tag_ctl;
+
 static int __init install(void) {
    int i,j;
 
@@ -189,16 +179,27 @@ static int __init install(void) {
          printk("%s: found sys_ni_syscall entry at syscall_table[%d]\n",MODNAME,i);
 
          free_entries[j++] = i;
-         if(j>=NR_NEW_SYSCALLS) break;
+         if(j >= NR_NEW_SYSCALLS) break;
       }
    }
 
-   /* Writing the new syscall on the syscall table */
+   /* Writing the new syscalls on the syscall table */
    cr0 = read_cr0();
    unprotect_memory();
+
    hacked_syscall_tbl[FIRST_NI_SYSCALL] = (unsigned long*)sys_tag_get;
+   printk("%s: tag_get sys_call with 3 parameters has been installed on the sys_call_table at displacement %d\n", MODNAME, FIRST_NI_SYSCALL);
+
+   hacked_syscall_tbl[SECOND_NI_SYSCALL] = (unsigned long*)sys_tag_send;
+   printk("%s: tag_send sys_call with 3 parameters has been installed on the sys_call_table at displacement %d\n", MODNAME, SECOND_NI_SYSCALL);
+
+   hacked_syscall_tbl[THIRD_NI_SYSCALL] = (unsigned long*)sys_tag_receive;
+   printk("%s: tag_receive sys_call with 3 parameters has been installed on the sys_call_table at displacement %d\n", MODNAME, THIRD_NI_SYSCALL);
+
+   hacked_syscall_tbl[FOURTH_NI_SYSCALL] = (unsigned long*)sys_tag_ctl;
+   printk("%s: tag_ctl sys_call with 3 parameters has been installed on the sys_call_table at displacement %d\n", MODNAME, FOURTH_NI_SYSCALL);
+
    protect_memory();
-   printk("%s: a sys_call with 3 parameters has been installed on the sys_call_table at displacement %d\n", MODNAME, FIRST_NI_SYSCALL);
 
    printk("%s: module correctly mounted\n",MODNAME);
 
@@ -209,10 +210,12 @@ static void __exit uninstall(void) {
 
    cr0 = read_cr0();
    unprotect_memory();
+
    hacked_syscall_tbl[FIRST_NI_SYSCALL] = (unsigned long*)hacked_ni_syscall;
    hacked_syscall_tbl[SECOND_NI_SYSCALL] = (unsigned long*)hacked_ni_syscall;
    hacked_syscall_tbl[THIRD_NI_SYSCALL] = (unsigned long*)hacked_ni_syscall;
    hacked_syscall_tbl[FOURTH_NI_SYSCALL] = (unsigned long*)hacked_ni_syscall;
+
    protect_memory();
 
    printk("%s: shutting down\n",MODNAME);
