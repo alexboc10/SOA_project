@@ -1,10 +1,15 @@
 #include "constants.h"
 
 /* This structure represents a TAG service, a TST
-   entry. It is an element of a double linked list.*/
+   entry. It has a system visibility */
 struct tag_service {
-   int key; /* TAG service unique ID */
-   int perm; /* TAG service permission */
-   struct tag_service *prev;
-   struct tag_service *next;
+   int key; /* If existing, it's the accessing key */
+   int owner; /* The user who created the service, if requested */
+};
+
+/* This structure represents a open tag service, with 
+   single-thread visibility */
+struct open_tag {
+   int tag_id; /* Tag service id, visible for the specific thread */
+   struct tag_service *service;
 };

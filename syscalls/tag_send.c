@@ -5,16 +5,16 @@
 #include "../data/constants.h"
 #include "../data/structures.h"
 
-#define MODULE_NAME "TAG_GET"
+#define MODULE_NAME "TAG_SEND"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Alessandro Boccini");
-MODULE_DESCRIPTION("tag_get syscall");
+MODULE_DESCRIPTION("tag_send syscall");
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,17,0)
-__SYSCALL_DEFINEx(3, _tag_get, int, key, int, command, int, permission) {
+__SYSCALL_DEFINEx(4, _tag_send, int, tag, int, level, char *, buffer, size_t, size) {
 #else
-asmlinkage int sys_tag_get(int key, int command, int permission) {
+asmlinkage int sys_tag_send(int tag, int level, char *buffer, size_t size) {
 #endif
 
    return 0;
