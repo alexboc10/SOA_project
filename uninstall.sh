@@ -1,5 +1,5 @@
 #! /bin/bash
 
-sudo rmmod tag_service
+sudo rmmod TBDE
 make clean
-sudo dmesg | grep "TAG_SERVICE"
+sudo dmesg

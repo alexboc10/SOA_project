@@ -1,0 +1,1 @@
+cmd_/home/altair9510/university/SOA_project/TBDE.ko := ld -r -m elf_x86_64  -z max-page-size=0x200000 --build-id=sha1  -T ./scripts/module-common.lds -o /home/altair9510/university/SOA_project/TBDE.ko /home/altair9510/university/SOA_project/TBDE.o /home/altair9510/university/SOA_project/TBDE.mod.o;  true

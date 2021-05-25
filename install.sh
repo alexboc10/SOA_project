@@ -1,5 +1,5 @@
 #! /bin/bash
 
 make
-sudo insmod tag_service.ko
-sudo dmesg | grep "TAG_SERVICE"
+sudo insmod TBDE.ko
+sudo dmesg

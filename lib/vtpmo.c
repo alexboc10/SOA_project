@@ -40,9 +40,9 @@
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Francesco Quaglia <francesco.quaglia@uniroma2.it>");
-MODULE_DESCRIPTION("discovers the validity of virtual to physical mapping starting from a virtual address passed in input");
+MODULE_DESCRIPTION("Discovers the validity of virtual to physical mapping starting from a virtual address passed in input");
 
-#define MODNAME "VTMPO"
+#define LIBNAME "VTMPO"
 
 int sys_vtpmo(unsigned long vaddr);
 EXPORT_SYMBOL(sys_vtpmo);
@@ -84,20 +84,20 @@ int sys_vtpmo(unsigned long vaddr){
    target_address = (void *) vaddr;
 
    AUDIT
-   printk("%s: ------------------------------\n",MODNAME);
+   printk("%s: ------------------------------\n",LIBNAME);
 
    AUDIT
-   printk("%s: vtpmo asked to tell the physical memory positioning (frame number) for virtual address %p\n",MODNAME,(target_address));
+   printk("%s: vtpmo asked to tell the physical memory positioning (frame number) for virtual address %p\n",LIBNAME,(target_address));
 
    pml4  = PAGE_TABLE_ADDRESS;
 
    AUDIT
-   printk("%s: PML4 traversing on entry %lld\n",MODNAME,PML4(target_address));
+   printk("%s: PML4 traversing on entry %lld\n",LIBNAME,PML4(target_address));
 
    if (((ulong)(pml4[PML4(target_address)].pgd)) & VALID) {
    } else {
       AUDIT
-      printk("%s: PML4 region not mapped to physical memory\n",MODNAME);
+      printk("%s: PML4 region not mapped to physical memory\n",LIBNAME);
 
       return NO_MAP;
    }
@@ -105,12 +105,12 @@ int sys_vtpmo(unsigned long vaddr){
    pdp = __va((ulong)(pml4[PML4(target_address)].pgd) & PT_ADDRESS_MASK);
 
    AUDIT
-   printk("%s: PDP traversing on entry %lld\n",MODNAME,PDP(target_address));
+   printk("%s: PDP traversing on entry %lld\n",LIBNAME,PDP(target_address));
 
    if ((ulong)(pdp[PDP(target_address)].pud) & VALID) {
    } else {
       AUDIT
-      printk("%s: PDP region not mapped to physical memory\n",MODNAME);
+      printk("%s: PDP region not mapped to physical memory\n",LIBNAME);
 
       return NO_MAP;
    }
@@ -118,24 +118,24 @@ int sys_vtpmo(unsigned long vaddr){
    pde = __va((ulong)(pdp[PDP(target_address)].pud) & PT_ADDRESS_MASK);
 
    AUDIT
-   printk("%s: PDE traversing on entry %lld\n",MODNAME,PDE(target_address));
+   printk("%s: PDE traversing on entry %lld\n",LIBNAME,PDE(target_address));
 
    if ((ulong)(pde[PDE(target_address)].pmd) & VALID) {
    } else {
       AUDIT
-      printk("%s: PDE region not mapped to physical memory\n",MODNAME);
+      printk("%s: PDE region not mapped to physical memory\n",LIBNAME);
 
       return NO_MAP;
    }
 
    if ((ulong)pde[PDE(target_address)].pmd & LH_MAPPING) {
       AUDIT
-      printk("%s: PDE region mapped to large page\n",MODNAME);
+      printk("%s: PDE region mapped to large page\n",LIBNAME);
 
       frame_addr = (ulong)(pde[PDE(target_address)].pmd) & PT_ADDRESS_MASK;
 
       AUDIT
-      printk("%s: frame physical addr is 0X%p\n",MODNAME,(void*)frame_addr);
+      printk("%s: frame physical addr is 0X%p\n",LIBNAME,(void*)frame_addr);
 
       frame_number = frame_addr >> 12;
 
@@ -143,14 +143,14 @@ int sys_vtpmo(unsigned long vaddr){
    }
 
    AUDIT
-   printk("%s: PTE traversing on entry %lld\n",MODNAME,PTE(target_address));
+   printk("%s: PTE traversing on entry %lld\n",LIBNAME,PTE(target_address));
 
    pte = __va((ulong)(pde[PDE(target_address)].pmd) & PT_ADDRESS_MASK);
 
    if ((ulong)(pte[PTE(target_address)].pte) & VALID) {
    } else {
       AUDIT
-      printk("%s: PTE region (page) not mapped to physical memory\n",MODNAME);
+      printk("%s: PTE region (page) not mapped to physical memory\n",LIBNAME);
 
       return NO_MAP;
    }
@@ -158,7 +158,7 @@ int sys_vtpmo(unsigned long vaddr){
    frame_addr = (ulong)(pte[PTE(target_address)].pte) & PT_ADDRESS_MASK;
 
    AUDIT
-   printk("%s: frame physical addr of Ox%p is 0x%p\n",MODNAME, (void*)vaddr, (void*)frame_addr);
+   printk("%s: frame physical addr of Ox%p is 0x%p\n",LIBNAME, (void*)vaddr, (void*)frame_addr);
 
    frame_number = frame_addr >> 12;
 
