@@ -20,10 +20,26 @@ __SYSCALL_DEFINEx(4, _tag_send, int, tag, int, level, char *, buffer, size_t, si
 #else
 asmlinkage int sys_tag_send(int tag, int level, char *buffer, size_t size) {
 #endif
+   int ret;
 
-   printk("Sono tag_send!!!\n");
+   if (tag < 0 || tag > (TAG_SERVICES_NUM-1)) {
+      printk("%s: the specified tag is not valid\n", LIBNAME);
+      return -1;
+   }
 
-   return 0;
+   if (level < 0 || level >= LEVELS) {
+      printk("%s: the specified level is not valid\n", LIBNAME);
+      return -1;
+   }
+
+   if (strlen(buffer) < (int) size) {
+      printk("%s: the size of the message must be lower or equal than buffer size\n", LIBNAME);
+      return -1;
+   }
+
+   ret = send_message(tag+1, level, buffer, size);
+
+   return ret;
 }
 
 unsigned long tag_send_addr(void) {

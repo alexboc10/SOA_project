@@ -29,21 +29,12 @@ asmlinkage int sys_tag_get(int key, int command, int permission) {
 #endif
    int ret;
 
-   if (!(isdigit(key)) || key < 0) {
-      printk("%s: 'key' argument must be a positive integer or IPC_PRIVATE\n", LIBNAME);
-      return -1;
-   }
-
-   if (permission != LIMITED && permission != ANY) {
-      printk("%s: 'permission' argument must be LIMITED (%d) or ANY (%d)", LIBNAME, LIMITED, ANY);
+   if (permission != ONLY_OWNER && permission != ANY) {
+      printk("%s: 'permission' argument must be ONLY_OWNER (%d) or ANY (%d)", LIBNAME, ONLY_OWNER, ANY);
       return -1;
    }
 
    if (command == CMD_CREATE) {
-      /* The thread wants to istantiate a new TAG service, indexing it with
-         a 'key' (not existing) and with permission options (optional).
-         The istantiation will be done inside the TST, making it visible
-         for all the threads. */
       goto create;
    } else if (command == CMD_OPEN) {
       goto open;
@@ -54,28 +45,33 @@ asmlinkage int sys_tag_get(int key, int command, int permission) {
 
 create:
 
-   /* This function allocates an element in the TST, with 'key' as index
-      and with 'permission' as visibility rule. The return value is the 
-      tag service descriptor */
-
-   if (key == IPC_PRIVATE) {
-      printk("%s: IPC_PRIVATE cannot be used in tag service creation\n", LIBNAME);
+   /* IPC_PRIVATE = 0 */
+   if (key < 0 || key > TAG_SERVICES_NUM) {
+      printk("%s: 'key' argument must be a positive integer between 1 and %d or IPC_PRIVATE\n", LIBNAME, TAG_SERVICES_NUM);
       return -1;
    }
 
+   /* This function allocates an element in the TST, with 'key' as index
+      and with 'permission' as visibility rule. The return value is the 
+      key itself, useful for the service opening. IPC_PRIVATE as 'key' can
+      be used exclusively here to istantiate a service visible just for
+      the creator process */
    ret = create_service(key, permission);
-   return ret; /* tag service descriptor or -1 */
+   return ret; /* key or -1 (error) */
 
 open:
 
-   /* This function opens an existing tag service with 'key' (that actually is the
-      tag service descriptor) as index only if the calling thread has the correct 
-      privileges. This time the return value is the tag service descriptor, useful 
-      for tag service operations. IPC_PRIVATE can be used as 'key' only for this
-      system call (the explicit creation of a new service is not necessary): in
-      that case, the visibility is limited to current user itself. */
+   if (key <= 0 || key > TAG_SERVICES_NUM) {
+      printk("%s: 'key' argument must be a positive integer between 1 and %d\n", LIBNAME, TAG_SERVICES_NUM);
+      return -1;
+   }
+
+   /* This function opens an existing tag service with 'key' as index only 
+      if the calling thread has the correct privileges. This time the return 
+      value is the tag service descriptor, useful for tag service operations. 
+      Here IPC_PRIVATE is not available. */
    ret = open_service(key, permission);
-   return ret; /* tag service descriptor or -1 */
+   return ret; /* tag or -1 (error) */
 }
 
 unsigned long tag_get_addr(void) {

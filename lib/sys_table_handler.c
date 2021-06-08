@@ -26,10 +26,6 @@
 #include <linux/init.h>
 #include "../data/constants.h"
 
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Alessandro Boccini");
-MODULE_DESCRIPTION("Library for syscall table management");
-
 #define LIBNAME "SYS_TABLE_HANDLER"
 
 extern int sys_vtpmo(unsigned long vaddr);
@@ -47,10 +43,9 @@ EXPORT_SYMBOL(uninstall_syscalls);
 void get_syscalls_addresses(void);
 EXPORT_SYMBOL(get_syscalls_addresses);
 
-/* To migrate */
 #define ADDRESS_MASK 0xfffffffffffff000
 
-#define START 			0xffffffff00000000ULL		// use this as starting address --> this is a biased search since does not start from 0xffff000000000000
+#define START 			0xffffffff00000000ULL
 #define MAX_ADDR		0xfffffffffff00000ULL
 #define FIRST_NI_SYSCALL	134
 #define SECOND_NI_SYSCALL	174
@@ -64,10 +59,8 @@ unsigned long *hacked_ni_syscall = NULL;
 unsigned long **hacked_syscall_tbl = NULL;
 
 unsigned long sys_call_table_address = 0x0;
-//module_param(sys_call_table_address, ulong, 0660);
 
 unsigned long sys_ni_syscall_address = 0x0;
-//module_param(sys_ni_syscall_address, ulong, 0660);
 
 int good_area(unsigned long * addr){
    int i;

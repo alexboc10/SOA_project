@@ -38,10 +38,6 @@
 #include <linux/syscalls.h>
 #include "../data/constants.h"
 
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Francesco Quaglia <francesco.quaglia@uniroma2.it>");
-MODULE_DESCRIPTION("Discovers the validity of virtual to physical mapping starting from a virtual address passed in input");
-
 #define LIBNAME "VTMPO"
 
 int sys_vtpmo(unsigned long vaddr);
