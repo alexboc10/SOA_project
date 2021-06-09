@@ -3,14 +3,9 @@
 #include <linux/syscalls.h>
 #include <linux/version.h>
 
-#include "../data/constants.h"
-#include "../data/structures.h"
+#include "../include/constants.h"
 
 #define LIBNAME "TAG_CTL"
-
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Alessandro Boccini");
-MODULE_DESCRIPTION("tag_ctl syscall");
 
 unsigned long tag_ctl_addr(void);
 EXPORT_SYMBOL(tag_ctl_addr);

@@ -21,23 +21,15 @@
 #include <linux/syscalls.h>
 #include <linux/init.h>
 #include <linux/uidgid.h>
+
 #include "../include/constants.h"
-#include "../include/rcu_list.h"
-#include "../include/tag.h"
+#include "../include/messages_list.h"
+#include "../include/TST_handler.h"
 
 #define LIBNAME "TST_HANDLER"
 
-int create_service(int, int);
-EXPORT_SYMBOL(create_service);
-
-int open_service(int, int);
-EXPORT_SYMBOL(open_service);
-
-int TST_alloc(void);
-EXPORT_SYMBOL(TST_alloc);
-
-void TST_dealloc(void);
-EXPORT_SYMBOL(TST_dealloc);
+extern long sys_goto_sleep(level_t *);
+extern long sys_awake(level_t *);
 
 /* The TST is kept in memory in order to handle the services.
    Every element is a tag_service object */
@@ -72,11 +64,11 @@ int TST_alloc(void) {
 int create_service(int key, int permission) {
 
    /* Serialized access to TST */
-   spin_lock(&tag_spinlock);
+   spin_lock(&tst_spinlock);
 
    /* The TST is full */
    if (first_index_free == -1) {
-      spin_unlock(&tag_spinlock);
+      spin_unlock(&tst_spinlock);
       printk("%s: the TST is full. Allocation failed\n", LIBNAME);
       return -1;
    }
@@ -92,7 +84,7 @@ int create_service(int key, int permission) {
       new_service.priv = 1;
    } else {
       if (tst_status[key-1] == 1) {
-         spin_unlock(&tag_spinlock);
+         spin_unlock(&tst_spinlock);
          printk("%s: the tag service with the specified key already exists. Allocation failed\n", LIBNAME);
          return -1;
       }
@@ -127,7 +119,7 @@ int create_service(int key, int permission) {
       }
    }
 
-   spin_unlock(&tag_spinlock);
+   spin_unlock(&tst_spinlock);
 
    /* The return value is the key (not the tag), since
       the service is not still usable */
@@ -154,24 +146,23 @@ int check_privileges(int key) {
 }
 
 int open_service(int key, int permission) {
-   int tsd = -1;
 
-   spin_lock(&tag_spinlock);
+   spin_lock(&tst_spinlock);
 
     /* The service does not exist */
    if (tst_status[key-1] == 0) {
-      spin_unlock(&tag_spinlock);
+      spin_unlock(&tst_spinlock);
       printk("%s: the specified key does not match any existing tag service. Opening failed\n", LIBNAME);
       return -1;
    }
 
    if (check_privileges(key) == -1) {
-      spin_unlock(&tag_spinlock);
+      spin_unlock(&tst_spinlock);
       printk("%s: opening denied\n", LIBNAME);
       return -1;
    }
 
-   spin_unlock(&tag_spinlock);
+   spin_unlock(&tst_spinlock);
 
    /* The return value is the tag. It can be actually used
       for operations */
@@ -180,7 +171,7 @@ int open_service(int key, int permission) {
 
 int send_message(int key, int level, char *buffer, size_t size) {
    tag_t *tag;
-   level_t *level;
+   level_t *level_obj;
 
    if (tst_status[key-1] == 0) {
       printk("%s: the specified tag does not exist. Operation failed\n", LIBNAME);
@@ -192,10 +183,10 @@ int send_message(int key, int level, char *buffer, size_t size) {
       return -1;
    }
 
-   level = &(tag->levels[level]);
+   level_obj = &(tag->levels[level]);
 
    //Prepare the message structure
-   int waiting_threads = level->waiting_threads;
+   int waiting_threads = level_obj->waiting_threads;
 
    msg_t message;
    message.size = size;
@@ -210,48 +201,48 @@ int send_message(int key, int level, char *buffer, size_t size) {
    strncpy(message.msg, buffer, size);
 
    spin_lock(&(tag->level_activation_spinlock[level]));
-   if(level->active == 0){
-      rcu_messages_list_init(&(level->msg_list));
-      level->active = 1;
-      level->first_elem.task = NULL;
-      level->first_elem.pid = -1;
-      level->first_elem.awake = -1;
-      level->first_elem.already_hit = -1;
-      level->first_elem.next = NULL;
+   if(level_obj->active == 0){
+      rcu_messages_list_init(&(level_obj->msg_list));
+      level_obj->active = 1;
+      level_obj->first_elem.task = NULL;
+      level_obj->first_elem.pid = -1;
+      level_obj->first_elem.awake = -1;
+      level_obj->first_elem.already_hit = -1;
+      level_obj->first_elem.next = NULL;
 
-      spin_lock_init(&(level->queue_spinlock));
-      spin_lock_init(&(level->msg_spinlock));
+      spin_lock_init(&(level_obj->queue_spinlock));
+      spin_lock_init(&(level_obj->msg_spinlock));
 
       asm volatile("mfence");
    }
 
    spin_unlock(&(tag->level_activation_spinlock[level]));
-   spin_lock(&(level->msg_spinlock));
+   spin_lock(&(level_obj->msg_spinlock));
 
-   if (level->waiting_threads == 0) {
+   if (level_obj->waiting_threads == 0) {
       printk("%s: no waiting threads. The message will not be sent\n", LIBNAME);
    } else {
-      msg_t *res = rcu_messages_list_insert(&(level->msg_list), message);
+      msg_t *res = rcu_messages_list_insert(&(level_obj->msg_list), message);
       int awakened_pid;
 
       asm volatile("mfence");
 
-      awekened_pid = -1;
+      awakened_pid = -1;
 
-      while (awekened_pid != 0) {
-         awekened_pid = sys_awake(level);
-         printk("%s: thread %d woke up thread %d\n", LIBNAME, current->pid, awekened_pid);
+      while (awakened_pid != 0) {
+         awakened_pid = sys_awake(level_obj);
+         printk("%s: thread %d woke up thread %d\n", LIBNAME, current->pid, awakened_pid);
       }
    }
 
-   spin_unlock(&(level->msg_spinlock));
+   spin_unlock(&(level_obj->msg_spinlock));
 
    return 0;
 }
 
 int receive_message(int key, int level, char* buffer, size_t size) {
    tag_t *tag;
-   level_t *level;
+   level_t *level_obj;
 
    if (tst_status[key-1] == 0) {
       printk("%s: the specified tag does not exist. Operation failed\n", LIBNAME);
@@ -263,35 +254,35 @@ int receive_message(int key, int level, char* buffer, size_t size) {
       return -1;
    }
 
-   level = &(tag->levels[level]);
+   level_obj = &(tag->levels[level]);
 
    spin_lock(&(tag->level_activation_spinlock[level]));
 
-   if (level->active == 0) {
-      level->active = 1;
+   if (level_obj->active == 0) {
+      level_obj->active = 1;
    }
 
    spin_unlock(&(tag->level_activation_spinlock[level]));
 
    /* There is one more thread waiting for a message receiving */
-   level->waiting_threads++;
+   level_obj->waiting_threads++;
 
    printk("%s: request to sleep from thread %d\n", LIBNAME, current->pid);
 
    /* The thread requests for a sleep, waiting for the message receiving */
-   sys_goto_sleep(level);
+   sys_goto_sleep(level_obj);
 
    printk("%s: thread %d awekened\n", LIBNAME, current->pid);
 
-   spin_lock(&(level->msg_spinlock));
+   spin_lock(&(level_obj->msg_spinlock));
 
-   msg_t *the_msg = level->msg_list.head;
+   msg_t *the_msg = level_obj->msg_list.head;
 
    if (the_msg == NULL) {
-      spin_unlock(&(level->msg_spinlock));
+      spin_unlock(&(level_obj->msg_spinlock));
       asm volatile("mfence");
-      printk("%s: no available messages for thread %d\n", MODNAME, current->pid);
-      level->waiting_threads--;
+      printk("%s: no available messages for thread %d\n", LIBNAME, current->pid);
+      level_obj->waiting_threads--;
       return -1;
    }
 
@@ -302,18 +293,18 @@ int receive_message(int key, int level, char* buffer, size_t size) {
 
    strncpy(buffer, the_msg->msg, size);
    buffer[size] = '\0';
-   printk("%s: message read by thread %d\n", MODNAME, current->pid);
+   printk("%s: message read by thread %d\n", LIBNAME, current->pid);
 
    int counter;
    /* RCU list handling */
    counter = the_msg->reading_threads-1;
    if (counter == 0) {
-      rcu_messages_list_remove(&(level->msg_list), the_msg);
+      rcu_messages_list_remove(&(level_obj->msg_list), the_msg);
    }
 
-   level->waiting_threads--;
+   level_obj->waiting_threads--;
 
-   spin_unlock(&(level->msg_spinlock));
+   spin_unlock(&(level_obj->msg_spinlock));
 
    return 0;
 }

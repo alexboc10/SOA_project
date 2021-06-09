@@ -24,7 +24,9 @@
 #include <asm/apic.h>
 #include <linux/syscalls.h>
 #include <linux/init.h>
-#include "../data/constants.h"
+
+#include "../include/sys_table_handler.h"
+#include "../include/constants.h"
 
 #define LIBNAME "SYS_TABLE_HANDLER"
 
@@ -33,15 +35,6 @@ extern unsigned long tag_get_addr(void);
 extern unsigned long tag_send_addr(void);
 extern unsigned long tag_receive_addr(void);
 extern unsigned long tag_ctl_addr(void);
-
-int install_syscalls(void);
-EXPORT_SYMBOL(install_syscalls);
-
-int uninstall_syscalls(void);
-EXPORT_SYMBOL(uninstall_syscalls);
-
-void get_syscalls_addresses(void);
-EXPORT_SYMBOL(get_syscalls_addresses);
 
 #define ADDRESS_MASK 0xfffffffffffff000
 

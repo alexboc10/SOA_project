@@ -2,7 +2,9 @@
 #include <linux/spinlock.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
-#include "../include/rcu_list.h"
+#include <linux/vmalloc.h>
+
+#include "../include/messages_list.h"
 
 #define LIBNAME "MSG_HANDLER"
 
@@ -16,12 +18,12 @@ void rcu_messages_list_init(list_t * list) {
    list->standing[0] = 0;
    list->standing[1] = 0;
    list->head = NULL;
-   spin_lock_init(&l->write_spinlock);
+   spin_lock_init(&list->write_spinlock);
    asm volatile("mfence");
 
 }
 
-msg_t *rcu_messages_list_insert(list_t *istl, msg_t message) {
+msg_t *rcu_messages_list_insert(list_t *list, msg_t message) {
    msg_t *p;
    int temp;
    int grace_epoch;
@@ -47,8 +49,8 @@ msg_t *rcu_messages_list_insert(list_t *istl, msg_t message) {
    p->reading_threads = message.reading_threads;
 
    //traverse and insert
-   p->next = l->head;
-   l->head = p;
+   p->next = list->head;
+   list->head = p;
 
    goto done;
 

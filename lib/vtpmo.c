@@ -36,7 +36,8 @@
 #include <asm/apic.h>
 #include <asm/io.h>
 #include <linux/syscalls.h>
-#include "../data/constants.h"
+
+#include "../include/constants.h"
 
 #define LIBNAME "VTMPO"
 

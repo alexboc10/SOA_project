@@ -5,14 +5,9 @@
 #include <linux/version.h>
 #include <linux/ctype.h>
 
-#include "../data/constants.h"
-#include "../data/structures.h"
+#include "../include/constants.h"
 
 #define LIBNAME "TAG_GET"
-
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Alessandro Boccini");
-MODULE_DESCRIPTION("tag_get syscall");
 
 extern int open_service(int, int);
 extern int create_service(int, int);

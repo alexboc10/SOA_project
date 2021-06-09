@@ -1,8 +1,11 @@
+#ifndef TST_HANDLER_H
+#define TST_HANDLER_H
+
 #include "constants.h"
-#include "rcu_list.h"
+#include "messages_list.h"
 
 /* This spinlock allows to handle concurrent accesses to the TST */
-spinlock_t tst_spinlock;
+static spinlock_t tst_spinlock;
 
 /* An element of the wait queue list. It allows to handle the sleeping thread 
    during the service usage */
@@ -34,3 +37,19 @@ typedef struct _tag_service {
    level_t levels[LEVELS];
    spinlock_t level_activation_spinlock[LEVELS]; /* Spinlock for level initialization */
 } tag_t;
+
+/* ----------- Management functions ----------- */
+
+int create_service(int key, int permission);
+
+int open_service(int key, int permission);
+
+int send_message(int key, int level, char *buffer, size_t size);
+
+int receive_message(int key, int level, char* buffer, size_t size);
+
+int TST_alloc(void);
+
+void TST_dealloc(void);
+
+#endif

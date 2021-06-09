@@ -1,3 +1,6 @@
+#ifndef CONSTANTS_H
+#define CONSTANTS_H
+
 /* Permission level for TAG service operations */
 #define ONLY_OWNER 0
 #define ANY 1
@@ -23,3 +26,5 @@
 
 /* Number of syscalls needed in the subsystem */
 #define NR_NEW_SYSCALLS 4
+
+#endif

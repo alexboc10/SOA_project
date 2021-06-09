@@ -1,3 +1,6 @@
+#ifndef MESSAGES_LIST_H
+#define MESSAGES_LIST_H
+
 /* This is the structure representing a message. A message is an entity
    that can be sent and received by threads. They are stored in a RCU
    list to preserve the correctness of writings e readings in an efficient
@@ -24,3 +27,5 @@ void rcu_messages_list_init(list_t *list);
 msg_t *rcu_messages_list_insert(list_t *list, msg_t msg);
 
 int rcu_messages_list_remove(list_t *list, msg_t *msg);
+
+#endif

@@ -7,6 +7,8 @@
 #include <linux/spinlock.h>
 #include <linux/syscalls.h>
 
+#include "../include/TST_handler.h"
+
 /* This code is based on Francesco Quaglia example. It has been adapted for the specific
    purpose of the project. */
 
@@ -33,11 +35,11 @@ long sys_goto_sleep(level_t *level) {
 
    preempt_disable();
 
-   spin_lock(&(level->queue_lock));
+   spin_lock(&(level->queue_spinlock));
 
    aux = &(level->first_elem);
    if (aux == NULL) {
-      spin_unlock(&(level->queue_lock));
+      spin_unlock(&(level->queue_spinlock));
       preempt_enable();
       printk("%s: malformed sleep-wakeup-queue - service damaged\n",LIBNAME);
       return -1;
@@ -52,7 +54,7 @@ long sys_goto_sleep(level_t *level) {
    }
 
 sleep:
-   spin_unlock(&(level->queue_lock));
+   spin_unlock(&(level->queue_spinlock));
 
    preempt_enable();
 
@@ -63,11 +65,11 @@ sleep:
 
    preempt_disable();//all preempt enable/disable calls in this module are redundant - stand here as an example of usage
 
-   spin_lock(&(level->queue_lock));
+   spin_lock(&(level->queue_spinlock));
 
-   aux = &(level_first_elem);
+   aux = &(level->first_elem);
    if (aux == NULL) {
-      spin_unlock(&(level->queue_lock));
+      spin_unlock(&(level->queue_spinlock));
       preempt_enable();
       printk("%s: malformed sleep-wakeup-queue upon wakeup - service damaged\n",LIBNAME);
       return -1;
@@ -83,7 +85,7 @@ sleep:
       aux = aux->next;
    }
 
-   spin_unlock(&(level->queue_lock));
+   spin_unlock(&(level->queue_spinlock));
    preempt_enable();
 
    AUDIT
@@ -109,10 +111,10 @@ long sys_awake(level_t *level) {
 
    preempt_disable();
 
-   spin_lock(&(level->queue_lock));
+   spin_lock(&(level->queue_spinlock));
 
    if (aux == NULL) {
-      spin_unlock(&(level->queue_lock));
+      spin_unlock(&(level->queue_spinlock));
       preempt_enable();
       printk("%s: malformed sleep-wakeup-queue\n",LIBNAME);
       return -1;
@@ -130,14 +132,14 @@ long sys_awake(level_t *level) {
       aux = aux->next;
    }
 
-   spin_unlock(&(level->queue_lock));
+   spin_unlock(&(level->queue_spinlock));
 
    preempt_enable();
 
    return 0;
 
 awaken:
-   spin_unlock(&(level->queue_lock));
+   spin_unlock(&(level->queue_spinlock));
 
    preempt_enable();
 

@@ -2,8 +2,8 @@
 #include <linux/kernel.h>
 #include <linux/syscalls.h>
 
-#include "data/constants.h"
-#include "data/structures.h"
+#include "include/sys_table_handler.h"
+#include "include/TST_handler.h"
 
 #define MODULE_NAME "TBDE"
 
@@ -15,9 +15,11 @@ extern void get_syscalls_addresses(void);
 extern int install_syscalls(void);
 extern int uninstall_syscalls(void);
 extern int TST_alloc(void);
-extern int TST_dealloc(void);
+extern void TST_dealloc(void);
 
 static int __init install(void) {
+
+   spin_lock_init(&tst_spinlock);
 
    /* This function allocates the TST */
    TST_alloc();
