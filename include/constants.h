@@ -1,6 +1,8 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
+#define MODNAME "TBDE"
+
 /* Permission level for TAG service operations */
 #define ONLY_OWNER 0
 #define ANY 1

@@ -5,8 +5,7 @@
 #include <linux/vmalloc.h>
 
 #include "../include/messages_list.h"
-
-#define LIBNAME "MSG_HANDLER"
+#include "../include/constants.h"
 
 /* This code is based on Francesco Quaglia example. It has been adapted
    for the specific purpose of the project */
@@ -31,7 +30,7 @@ int rcu_messages_list_insert(list_t *list, msg_t message) {
    p = vmalloc(sizeof(msg_t));
 
    if (!p) {
-      printk("%s: error while allocating memory with vmalloc.\n", LIBNAME);
+      printk("%s: error while allocating memory with vmalloc.\n", MODNAME);
       return -1;
    }
 
@@ -42,7 +41,7 @@ int rcu_messages_list_insert(list_t *list, msg_t message) {
    //set element
    p->msg = (char *) vmalloc(message.size);
    if (!p->msg) {
-      printk("%s: error while allocating memory with vmalloc.\n", LIBNAME);
+      printk("%s: error while allocating memory with vmalloc.\n", MODNAME);
       spin_unlock(&(list->write_lock));
       return -1;
    }

@@ -5,8 +5,6 @@
 #include "include/sys_table_handler.h"
 #include "include/TST_handler.h"
 
-#define MODULE_NAME "TBDE"
-
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Alessandro Boccini");
 MODULE_DESCRIPTION("TAG-based data exchange. A message is sent/received according to tag+level matching");

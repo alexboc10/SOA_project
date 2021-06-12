@@ -28,8 +28,6 @@
 #include "../include/sys_table_handler.h"
 #include "../include/constants.h"
 
-#define LIBNAME "SYS_TABLE_HANDLER"
-
 extern int sys_vtpmo(unsigned long vaddr);
 extern unsigned long tag_get_addr(void);
 extern unsigned long tag_send_addr(void);
@@ -48,12 +46,12 @@ extern unsigned long tag_ctl_addr(void);
 #define SIXTH_NI_SYSCALL	215
 #define SEVENTH_NI_SYSCALL	236
 
-unsigned long *hacked_ni_syscall = NULL;
-unsigned long **hacked_syscall_tbl = NULL;
+static unsigned long *hacked_ni_syscall = NULL;
+static unsigned long **hacked_syscall_tbl = NULL;
 
-unsigned long sys_call_table_address = 0x0;
+static unsigned long sys_call_table_address = 0x0;
 
-unsigned long sys_ni_syscall_address = 0x0;
+static unsigned long sys_ni_syscall_address = 0x0;
 
 int good_area(unsigned long * addr){
    int i;
@@ -132,8 +130,8 @@ void syscall_table_finder(void){
       if (sys_vtpmo(candidate) != NO_MAP) {
          /* Check if candidate maintains the syscall_table */
 	 if (validate_page((unsigned long *)(candidate))) {
-	    printk("%s: syscall table found at %px\n",LIBNAME,(void*)(hacked_syscall_tbl));
-	    printk("%s: sys_ni_syscall found at %px\n",LIBNAME,(void*)(hacked_ni_syscall));
+	    printk("%s: syscall table found at %px\n",MODNAME,(void*)(hacked_syscall_tbl));
+	    printk("%s: sys_ni_syscall found at %px\n",MODNAME,(void*)(hacked_ni_syscall));
 	    break;
 	 }
       }
@@ -174,7 +172,7 @@ int install_syscalls(void) {
    syscall_table_finder();
 
    if(!hacked_syscall_tbl){
-      printk("%s: failed to find the syscall table\n",LIBNAME);
+      printk("%s: failed to find the syscall table\n",MODNAME);
       return -1;
    }
 
@@ -182,7 +180,7 @@ int install_syscalls(void) {
    /* Registering indexes for the new syscalls */
    for (i=0; i<NR_ENTRIES; i++) {
       if (hacked_syscall_tbl[i] == hacked_ni_syscall) {
-         printk("%s: found sys_ni_syscall entry at syscall_table[%d]\n",LIBNAME,i);
+         printk("%s: found sys_ni_syscall entry at syscall_table[%d]\n",MODNAME,i);
 
          free_entries[j++] = i;
          if(j >= NR_NEW_SYSCALLS) break;
@@ -194,20 +192,20 @@ int install_syscalls(void) {
    unprotect_memory();
 
    hacked_syscall_tbl[FIRST_NI_SYSCALL] = (unsigned long*)sys_tag_get;
-   printk("%s: tag_get sys_call with 3 parameters has been installed on the syscall table at displacement %d\n", LIBNAME, FIRST_NI_SYSCALL);
+   printk("%s: tag_get sys_call with 3 parameters has been installed on the syscall table at displacement %d\n", MODNAME, FIRST_NI_SYSCALL);
 
    hacked_syscall_tbl[SECOND_NI_SYSCALL] = (unsigned long*)sys_tag_send;
-   printk("%s: tag_send sys_call with 4 parameters has been installed on the syscall table at displacement %d\n", LIBNAME, SECOND_NI_SYSCALL);
+   printk("%s: tag_send sys_call with 4 parameters has been installed on the syscall table at displacement %d\n", MODNAME, SECOND_NI_SYSCALL);
 
    hacked_syscall_tbl[THIRD_NI_SYSCALL] = (unsigned long*)sys_tag_receive;
-   printk("%s: tag_receive sys_call with 4 parameters has been installed on the syscall table at displacement %d\n", LIBNAME, THIRD_NI_SYSCALL);
+   printk("%s: tag_receive sys_call with 4 parameters has been installed on the syscall table at displacement %d\n", MODNAME, THIRD_NI_SYSCALL);
 
    hacked_syscall_tbl[FOURTH_NI_SYSCALL] = (unsigned long*)sys_tag_ctl;
-   printk("%s: tag_ctl sys_call with 2 parameters has been installed on the syscall table at displacement %d\n", LIBNAME, FOURTH_NI_SYSCALL);
+   printk("%s: tag_ctl sys_call with 2 parameters has been installed on the syscall table at displacement %d\n", MODNAME, FOURTH_NI_SYSCALL);
 
    protect_memory();
 
-   printk("%s: syscalls correctly installed\n",LIBNAME);
+   printk("%s: syscalls correctly installed\n",MODNAME);
 
    return 0;
 }
@@ -224,7 +222,7 @@ int uninstall_syscalls(void) {
 
    protect_memory();
 
-   printk("%s: syscalls correctly unistalled\n",LIBNAME);
+   printk("%s: syscalls correctly unistalled\n",MODNAME);
 
    return 0;
 }

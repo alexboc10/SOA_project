@@ -1,0 +1,5 @@
+0x8fe322c2	tag_send_addr	/home/altair9510/university/SOA_project/TBDE	EXPORT_SYMBOL	
+0x849c827c	tag_get_addr	/home/altair9510/university/SOA_project/TBDE	EXPORT_SYMBOL	
+0x3cf9c1e6	tag_receive_addr	/home/altair9510/university/SOA_project/TBDE	EXPORT_SYMBOL	
+0xd92babed	sys_vtpmo	/home/altair9510/university/SOA_project/TBDE	EXPORT_SYMBOL	
+0x8af7a695	tag_ctl_addr	/home/altair9510/university/SOA_project/TBDE	EXPORT_SYMBOL	

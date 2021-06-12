@@ -8,11 +8,10 @@
 #include <linux/syscalls.h>
 
 #include "../include/TST_handler.h"
+#include "../include/constants.h"
 
 /* This code is based on Francesco Quaglia example. It has been adapted for the specific
    purpose of the project. */
-
-#define LIBNAME "SW_QUEUE_HANDLER"
 
 #define NO (0)
 #define YES (NO+1)
@@ -31,7 +30,7 @@ long sys_goto_sleep(level_t *level) {
    me.already_hit = NO;
 
    AUDIT
-   printk("%s: sys_goto_sleep on strong fifo sleep/wakeup queue called from thread %d\n", LIBNAME, current->pid);
+   printk("%s: sys_goto_sleep on strong fifo sleep/wakeup queue called from thread %d\n", MODNAME, current->pid);
 
    preempt_disable();
 
@@ -41,7 +40,7 @@ long sys_goto_sleep(level_t *level) {
    if (aux == NULL) {
       spin_unlock(&(level->queue_lock));
       preempt_enable();
-      printk("%s: malformed sleep-wakeup-queue - service damaged\n", LIBNAME);
+      printk("%s: malformed sleep-wakeup-queue - service damaged\n", MODNAME);
       return -1;
    }
 
@@ -59,7 +58,7 @@ sleep:
    preempt_enable();
 
    AUDIT
-   printk("%s: thread %d actually going to sleep\n", LIBNAME, current->pid);
+   printk("%s: thread %d actually going to sleep\n", MODNAME, current->pid);
 
    wait_event_interruptible(the_queue, me.awake == YES);
 
@@ -71,7 +70,7 @@ sleep:
    if (aux == NULL) {
       spin_unlock(&(level->queue_lock));
       preempt_enable();
-      printk("%s: malformed sleep-wakeup-queue upon wakeup - service damaged\n", LIBNAME);
+      printk("%s: malformed sleep-wakeup-queue upon wakeup - service damaged\n", MODNAME);
       return -1;
    }
 
@@ -89,11 +88,11 @@ sleep:
    preempt_enable();
 
    AUDIT
-   printk("%s: thread %d exiting sleep for a wakeup or signal\n", LIBNAME, current->pid);
+   printk("%s: thread %d exiting sleep for a wakeup or signal\n", MODNAME, current->pid);
 
    if (me.awake == NO) {
       AUDIT
-      printk("%s: thread %d exiting sleep for signal\n", LIBNAME, current->pid);
+      printk("%s: thread %d exiting sleep for signal\n", MODNAME, current->pid);
       return -EINTR;
    }
 
@@ -105,7 +104,7 @@ long sys_awake(level_t *level) {
    int its_pid = -1;
    wq_t *aux;
 
-   printk("%s: sys_awake called from thread %d\n", LIBNAME, current->pid);
+   printk("%s: sys_awake called from thread %d\n", MODNAME, current->pid);
 
    aux = &(level->head);
 
@@ -116,7 +115,7 @@ long sys_awake(level_t *level) {
    if (aux == NULL) {
       spin_unlock(&(level->queue_lock));
       preempt_enable();
-      printk("%s: malformed sleep-wakeup-queue\n", LIBNAME);
+      printk("%s: malformed sleep-wakeup-queue\n", MODNAME);
       return -1;
    }
 
@@ -145,7 +144,7 @@ awaken:
    preempt_enable();
 
    AUDIT
-   printk("%s: called the awake of thread %d\n", LIBNAME, its_pid);
+   printk("%s: called the awake of thread %d\n", MODNAME, its_pid);
 
    return its_pid;
 }
