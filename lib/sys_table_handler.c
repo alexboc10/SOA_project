@@ -106,10 +106,10 @@ int validate_page(unsigned long *addr){
 }
 
 /* Syscall pointers */
-unsigned long sys_tag_get;
-unsigned long sys_tag_send;
-unsigned long sys_tag_receive;
-unsigned long sys_tag_ctl;
+static unsigned long sys_tag_get;
+static unsigned long sys_tag_send;
+static unsigned long sys_tag_receive;
+static unsigned long sys_tag_ctl;
 
 /* This function allows to gather the syscalls addresses */
 void get_syscalls_addresses(void) {

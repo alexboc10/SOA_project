@@ -37,7 +37,7 @@ static tag_t *tst = NULL;
 static volatile int tst_status[TAG_SERVICES_NUM] = {[0 ... (TAG_SERVICES_NUM-1)] = 0};
 
 /* The first TST index free for tag service allocation */
-static int first_index_free = -1;
+static volatile int first_index_free = -1;
 
 void TST_dealloc(void) {
    vfree(tst);
@@ -55,6 +55,7 @@ int TST_alloc(void) {
    memset(tst, 0, TAG_SERVICES_NUM*sizeof(tag_t));
 
    first_index_free = 0;
+   asm volatile("mfence");
 
    return 0;
 }
@@ -85,7 +86,7 @@ int create_service(int key, int permission) {
    } else {
       if (tst_status[key-1] == 1) {
          spin_unlock(&tst_spinlock);
-         printk("%s: the tag service with the specified key already exists. Allocation failed\n", MODNAME);
+         printk("%s: the tag service with key %d already exists. Allocation failed\n", MODNAME, key);
          return -1;
       }
 
@@ -125,7 +126,7 @@ int create_service(int key, int permission) {
 
    /* Updating the first free index variable */
    for (i=first_index_free+1; i<TAG_SERVICES_NUM; i++) {
-      if (tst_status[i] != 0) {
+      if (tst_status[i] == 0) {
          first_index_free = i;
          break;
       }
@@ -134,9 +135,11 @@ int create_service(int key, int permission) {
       }
    }
 
+   asm volatile("mfence");
+
    spin_unlock(&tst_spinlock);
 
-   printk("%s: tag service correctly created\n", MODNAME);
+   printk("%s: tag service with key %d correctly created\n", MODNAME, key);
 
    /* The return value is the key (not the tag), since
       the service is not still usable */
@@ -149,18 +152,18 @@ int check_privileges(int key) {
 
    /* IPC_PRIVATE used during the istantiation */
    if (the_tag_service->priv == 1 && the_tag_service->owner != current->tgid) {
-      printk("%s: the process cannot use this tag service.\n", MODNAME);
+      printk("%s: the process %ld cannot use the tag service with key %d\n", MODNAME, current->tgid, key);
       return -1;
    }
 
    /* Service not accessible by all the users */
    if (the_tag_service->perm != -1 && the_tag_service->perm != current->cred->uid.val) {
-      printk("%s: the user cannot use this tag service\n", MODNAME);
+      printk("%s: the user %ld cannot use the tag service with key %d\n", MODNAME, current->cred->uid.val, key);
       return -1;
    }
 
    if (the_tag_service->open == 0) {
-      printk("%s: the tag service is closed\n", MODNAME);
+      printk("%s: the tag service with key %d is closed\n", MODNAME, key);
       return EOPEN;
    }
 
@@ -175,14 +178,14 @@ int open_service(int key, int permission) {
     /* The service does not exist */
    if (tst_status[key-1] == 0) {
       spin_unlock(&tst_spinlock);
-      printk("%s: the specified key does not match any existing tag service. Opening failed\n", MODNAME);
+      printk("%s: the key %d does not match any existing tag service. Opening failed\n", MODNAME, key);
       return -1;
    }
 
    /* If the service is already open, the tag is anyway returned */
    if (check_privileges(key) == -1) {
       spin_unlock(&tst_spinlock);
-      printk("%s: opening denied\n", MODNAME);
+      printk("%s: tag service opening with key %d denied\n", MODNAME, key);
       return -1;
    }
 
@@ -190,6 +193,10 @@ int open_service(int key, int permission) {
 
    /* Tag service actual opening */
    the_tag_service->open = 1;
+
+   asm volatile("mfence");
+
+   printk("%s: the service with tag %d is now open\n", MODNAME, key);
 
    spin_unlock(&tst_spinlock);
 

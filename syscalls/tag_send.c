@@ -5,8 +5,6 @@
 
 #include "../include/constants.h"
 
-#define LIBNAME "TAG_SEND"
-
 extern int send_message(int, int, char *, size_t);
 
 unsigned long tag_send_addr(void);
@@ -20,17 +18,17 @@ asmlinkage int sys_tag_send(int tag, int level, char *buffer, size_t size) {
    int ret;
 
    if (tag < 0 || tag > (TAG_SERVICES_NUM-1)) {
-      printk("%s: the specified tag is not valid\n", LIBNAME);
+      printk("%s: the specified tag is not valid\n", MODNAME);
       return -1;
    }
 
    if (level < 0 || level >= LEVELS) {
-      printk("%s: the specified level is not valid\n", LIBNAME);
+      printk("%s: the specified level is not valid\n", MODNAME);
       return -1;
    }
 
    if ((strlen(buffer) < (int) size) || (size > MAX_MSG_SIZE) || (strlen(buffer) > MAX_MSG_SIZE)) {
-      printk("%s: the size of the message must be lower or equal than buffer size and lower than %d byte\n", LIBNAME, MAX_MSG_SIZE);
+      printk("%s: the size of the message must be lower or equal than buffer size and lower than %d byte\n", MODNAME, MAX_MSG_SIZE);
       return -1;
    }
 

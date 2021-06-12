@@ -5,8 +5,6 @@
 
 #include "../include/constants.h"
 
-#define LIBNAME "TAG_CTL"
-
 unsigned long tag_ctl_addr(void);
 EXPORT_SYMBOL(tag_ctl_addr);
 
@@ -21,7 +19,7 @@ asmlinkage int sys_tag_ctl(int tag, int command) {
    int ret;
 
    if (tag < 0 || tag > (TAG_SERVICES_NUM-1)) {
-      printk("%s: the specified tag is not valid\n", LIBNAME);
+      printk("%s: the specified tag is not valid\n", MODNAME);
       return -1;
    }
 
@@ -30,7 +28,7 @@ asmlinkage int sys_tag_ctl(int tag, int command) {
    } else if (command == REMOVE) {
       goto remove;
    } else {
-      printk("%s: 'command' argument must be AWAKE_ALL (%d) or REMOVE (%d)\n", LIBNAME, AWAKE_ALL, REMOVE);
+      printk("%s: 'command' argument must be AWAKE_ALL (%d) or REMOVE (%d)\n", MODNAME, AWAKE_ALL, REMOVE);
       return -1;
    }
 

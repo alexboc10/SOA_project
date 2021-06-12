@@ -1,3 +1,3 @@
 #!/bin/bash
 
-gcc user.c -o user
+gcc -pthread user.c -o user
