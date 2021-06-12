@@ -2,4 +2,3 @@
 
 sudo rmmod TBDE
 make clean
-sudo dmesg

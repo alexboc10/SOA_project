@@ -31,17 +31,17 @@ long sys_goto_sleep(level_t *level) {
    me.already_hit = NO;
 
    AUDIT
-   printk("%s: sys_goto_sleep on strong fifo sleep/wakeup queue called from thread %d\n",LIBNAME,current->pid);
+   printk("%s: sys_goto_sleep on strong fifo sleep/wakeup queue called from thread %d\n", LIBNAME, current->pid);
 
    preempt_disable();
 
-   spin_lock(&(level->queue_spinlock));
+   spin_lock(&(level->queue_lock));
 
-   aux = &(level->first_elem);
+   aux = &(level->head);
    if (aux == NULL) {
-      spin_unlock(&(level->queue_spinlock));
+      spin_unlock(&(level->queue_lock));
       preempt_enable();
-      printk("%s: malformed sleep-wakeup-queue - service damaged\n",LIBNAME);
+      printk("%s: malformed sleep-wakeup-queue - service damaged\n", LIBNAME);
       return -1;
    }
 
@@ -54,24 +54,24 @@ long sys_goto_sleep(level_t *level) {
    }
 
 sleep:
-   spin_unlock(&(level->queue_spinlock));
+   spin_unlock(&(level->queue_lock));
 
    preempt_enable();
 
    AUDIT
-   printk("%s: thread %d actually going to sleep\n",LIBNAME,current->pid);
+   printk("%s: thread %d actually going to sleep\n", LIBNAME, current->pid);
 
    wait_event_interruptible(the_queue, me.awake == YES);
 
    preempt_disable();//all preempt enable/disable calls in this module are redundant - stand here as an example of usage
 
-   spin_lock(&(level->queue_spinlock));
+   spin_lock(&(level->queue_lock));
 
-   aux = &(level->first_elem);
+   aux = &(level->head);
    if (aux == NULL) {
-      spin_unlock(&(level->queue_spinlock));
+      spin_unlock(&(level->queue_lock));
       preempt_enable();
-      printk("%s: malformed sleep-wakeup-queue upon wakeup - service damaged\n",LIBNAME);
+      printk("%s: malformed sleep-wakeup-queue upon wakeup - service damaged\n", LIBNAME);
       return -1;
    }
 
@@ -85,15 +85,15 @@ sleep:
       aux = aux->next;
    }
 
-   spin_unlock(&(level->queue_spinlock));
+   spin_unlock(&(level->queue_lock));
    preempt_enable();
 
    AUDIT
-   printk("%s: thread %d exiting sleep for a wakeup or signal\n",LIBNAME, current->pid);
+   printk("%s: thread %d exiting sleep for a wakeup or signal\n", LIBNAME, current->pid);
 
    if (me.awake == NO) {
       AUDIT
-      printk("%s: thread %d exiting sleep for signal\n",LIBNAME, current->pid);
+      printk("%s: thread %d exiting sleep for signal\n", LIBNAME, current->pid);
       return -EINTR;
    }
 
@@ -105,18 +105,18 @@ long sys_awake(level_t *level) {
    int its_pid = -1;
    wq_t *aux;
 
-   printk("%s: sys_awake called from thread %d\n",LIBNAME,current->pid);
+   printk("%s: sys_awake called from thread %d\n", LIBNAME, current->pid);
 
-   aux = &(level->first_elem);
+   aux = &(level->head);
 
    preempt_disable();
 
-   spin_lock(&(level->queue_spinlock));
+   spin_lock(&(level->queue_lock));
 
    if (aux == NULL) {
-      spin_unlock(&(level->queue_spinlock));
+      spin_unlock(&(level->queue_lock));
       preempt_enable();
-      printk("%s: malformed sleep-wakeup-queue\n",LIBNAME);
+      printk("%s: malformed sleep-wakeup-queue\n", LIBNAME);
       return -1;
    }
 
@@ -127,24 +127,25 @@ long sys_awake(level_t *level) {
          aux->next->already_hit = YES;
          its_pid = aux->next->pid;
          wake_up_process(the_task);
+
          goto awaken;
       }
       aux = aux->next;
    }
 
-   spin_unlock(&(level->queue_spinlock));
+   spin_unlock(&(level->queue_lock));
 
    preempt_enable();
 
    return 0;
 
 awaken:
-   spin_unlock(&(level->queue_spinlock));
+   spin_unlock(&(level->queue_lock));
 
    preempt_enable();
 
    AUDIT
-   printk("%s: called the awake of thread %d\n",LIBNAME,its_pid);
+   printk("%s: called the awake of thread %d\n", LIBNAME, its_pid);
 
    return its_pid;
 }

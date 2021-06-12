@@ -22,9 +22,9 @@ typedef struct _wq_elem {
 typedef struct _level {
    int active; /* Is the level initialized? */
    int waiting_threads; /* Number of threads waiting for a message */
-   wq_t first_elem; /* First element in the level queueing */
-   spinlock_t queue_spinlock;
-   spinlock_t msg_spinlock;
+   wq_t head; /* First element in the level queueing */
+   spinlock_t queue_lock; /* Spinlock for threads queueing */
+   spinlock_t msg_lock; /* Spinlock for messages accesses */
    list_t msg_list; /* List of messages sent on this level */
 } level_t;
 
@@ -32,10 +32,14 @@ typedef struct _level {
 typedef struct _tag_service {
    int key; /* The service identifier */
    int perm; /* The access permission for the service */
-   pid_t owner; /* The service creator thread */
+   pid_t owner; /* The service creator process */
    int priv; /* Is this service istantiated with IPC_PRIVATE? */
+   int open; /* Is the service open? */
    level_t levels[LEVELS];
-   spinlock_t level_activation_spinlock[LEVELS]; /* Spinlock for level initialization */
+   spinlock_t awake_all_lock; /* Spinlock for threads awakening through tag_ctl syscall */
+   spinlock_t send_lock; /* Spinlock for message sendings */
+   spinlock_t receive_lock; /* Spinlock for message receivings */
+   spinlock_t level_activation_lock[LEVELS]; /* Spinlock for level initialization */
 } tag_t;
 
 /* ----------- Management functions ----------- */
@@ -47,6 +51,10 @@ int open_service(int key, int permission);
 int send_message(int key, int level, char *buffer, size_t size);
 
 int receive_message(int key, int level, char* buffer, size_t size);
+
+int awake_all_threads(int key);
+
+int remove_tag(int key);
 
 int TST_alloc(void);
 

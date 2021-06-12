@@ -2,4 +2,3 @@
 
 make
 sudo insmod TBDE.ko
-sudo dmesg

@@ -12,13 +12,16 @@ MODULE_AUTHOR("Alessandro Boccini");
 MODULE_DESCRIPTION("TAG-based data exchange. A message is sent/received according to tag+level matching");
 
 extern void get_syscalls_addresses(void);
+
 extern int install_syscalls(void);
 extern int uninstall_syscalls(void);
+
 extern int TST_alloc(void);
 extern void TST_dealloc(void);
 
 static int __init install(void) {
 
+   /* Initialization of TST operations spinlock */
    spin_lock_init(&tst_spinlock);
 
    /* This function allocates the TST */

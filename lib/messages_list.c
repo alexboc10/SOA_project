@@ -18,30 +18,33 @@ void rcu_messages_list_init(list_t * list) {
    list->standing[0] = 0;
    list->standing[1] = 0;
    list->head = NULL;
-   spin_lock_init(&list->write_spinlock);
+   spin_lock_init(&list->write_lock);
    asm volatile("mfence");
 
 }
 
-msg_t *rcu_messages_list_insert(list_t *list, msg_t message) {
+int rcu_messages_list_insert(list_t *list, msg_t message) {
    msg_t *p;
    int temp;
    int grace_epoch;
 
    p = vmalloc(sizeof(msg_t));
 
-   if(!p) return 0;
+   if (!p) {
+      printk("%s: error while allocating memory with vmalloc.\n", LIBNAME);
+      return -1;
+   }
 
    p->next = NULL;
 
-   spin_lock(&(list->write_spinlock));
+   spin_lock(&(list->write_lock));
 
    //set element
    p->msg = (char *) vmalloc(message.size);
    if (!p->msg) {
       printk("%s: error while allocating memory with vmalloc.\n", LIBNAME);
-      spin_unlock(&(list->write_spinlock));
-      return NULL;
+      spin_unlock(&(list->write_lock));
+      return -1;
    }
 
    strncpy(p->msg, message.msg, message.size);
@@ -61,14 +64,15 @@ msg_t *rcu_messages_list_insert(list_t *list, msg_t message) {
    list->epoch = temp;
    asm volatile("mfence");
 
+   /* Until there are active readers */
    while (list->standing[grace_epoch] > 0);
 
    p = list->head;
 
 done:
-   spin_unlock(&list->write_spinlock);
+   spin_unlock(&list->write_lock);
 
-   return p;
+   return 0;
 }
 
 int rcu_messages_list_remove(list_t *list, msg_t *message) {
@@ -76,7 +80,7 @@ int rcu_messages_list_remove(list_t *list, msg_t *message) {
    int temp;
    int grace_epoch;
 
-   spin_lock(&list->write_spinlock);
+   spin_lock(&list->write_lock);
 
    //traverse and delete
    p = list->head;
@@ -104,14 +108,14 @@ int rcu_messages_list_remove(list_t *list, msg_t *message) {
 
    while(list->standing[grace_epoch] > 0);
 
-   spin_unlock(&list->write_spinlock);
+   spin_unlock(&list->write_lock);
 
    if (removed) {
       vfree(removed);
-      return 1;
+      return 0;
    }
 
-   return 0;
+   return -1;
 }
 
 

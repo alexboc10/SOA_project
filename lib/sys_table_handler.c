@@ -1,4 +1,4 @@
-/* This module is based on Francesco Quaglia's code. It has been
+/* This code is based on Francesco Quaglia example. It has been
    adapted for our purposes but it follows the guide lines of
    Quaglia repository */
 
@@ -113,6 +113,7 @@ unsigned long sys_tag_send;
 unsigned long sys_tag_receive;
 unsigned long sys_tag_ctl;
 
+/* This function allows to gather the syscalls addresses */
 void get_syscalls_addresses(void) {
    sys_tag_get = tag_get_addr();
    sys_tag_send = tag_send_addr();

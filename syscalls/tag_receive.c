@@ -29,8 +29,8 @@ asmlinkage int sys_tag_receive(int tag, int level, char *buffer, size_t size) {
       return -1;
    }
 
-   if (strlen(buffer) < (int) size) {
-      printk("%s: the size of the message must be lower or equal than buffer size\n", LIBNAME);
+   if ((strlen(buffer) < (int) size) || (size > MAX_MSG_SIZE) || (strlen(buffer) > MAX_MSG_SIZE)) {
+      printk("%s: the size of the message must be lower or equal than buffer size and lower than %d byte\n", LIBNAME, MAX_MSG_SIZE);
       return -1;
    }
 

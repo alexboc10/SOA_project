@@ -44,7 +44,7 @@
 int sys_vtpmo(unsigned long vaddr);
 EXPORT_SYMBOL(sys_vtpmo);
 
-// get the current page table 
+// get the current page table
 static inline unsigned long _read_cr3(void) {
           unsigned long val;
           asm volatile("mov %%cr3,%0":  "=r" (val) : );

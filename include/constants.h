@@ -15,6 +15,10 @@
 #define CMD_CREATE 0
 #define CMD_OPEN 1
 
+/* Command allowed in tag_ctl syscall */
+#define AWAKE_ALL 0
+#define REMOVE 1
+
 /* Number of entries in syscall table */
 #define NR_ENTRIES 256
 
@@ -26,5 +30,7 @@
 
 /* Number of syscalls needed in the subsystem */
 #define NR_NEW_SYSCALLS 4
+
+#define EOPEN -2
 
 #endif
