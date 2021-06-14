@@ -31,6 +31,9 @@ typedef struct _ctl_args{
         int tag;
 } ctl_args;
 
+void service_removing();
+void threads_awakening();
+
 void *create_service(void *params) {
    int ret;
    get_args *args = (get_args *) params;
@@ -67,7 +70,7 @@ void *receive_message(void *params) {
    if (ret == -1) {
       printf("Thread %ld: tag %d reveiving at level %d failed\n", syscall(SYS_gettid), args->tag, args->level);
    } else {
-      printf("Thread %ld: tag %d receiving at level %d succeed (%ld bytes received)\n", syscall(SYS_gettid), args->tag, args->level, args->size);
+      printf("Thread %ld: tag %d receiving message '%s' at level %d succeed (%ld bytes received)\n", syscall(SYS_gettid), args->tag, args->buff, args->level, args->size);
    }
 
 }
@@ -81,7 +84,7 @@ void *send_message(void *params) {
    if (ret == -1) {
       printf("Thread %ld: tag %d sending at level %d failed\n", syscall(SYS_gettid), args->tag, args->level);
    } else {
-      printf("Thread %ld: tag %d sending at level %d succeed (%ld bytes sent)\n", syscall(SYS_gettid), args->tag, args->level, args->size);
+      printf("Thread %ld: tag %d sending message '%s' at level %d succeed (%ld bytes sent)\n", syscall(SYS_gettid), args->tag, args->buff, args->level, args->size);
    }
 
 }
@@ -145,7 +148,6 @@ void services_creation() {
    pthread_join(tid4, NULL);
    pthread_join(tid5, NULL);
 
-   return;
 }
 
 void services_opening() {
@@ -196,7 +198,7 @@ void message_exchange() {
    exchange_args args4 = {.tag = 3, .level = 2, .buff = buff4, .size = 32};
    pthread_create(&tid3, NULL, receive_message, (void *) &args4);
 
-   sleep(1);
+   sleep(5);
 
    exchange_args args5 = {.tag = 3, .level = 2, .buff = "First writer", .size = strlen("First writer")};
    pthread_create(&tid4, NULL, send_message, (void *) &args5);
@@ -204,6 +206,16 @@ void message_exchange() {
    /* This writing is discarded: no waiting threads */
    exchange_args args6 = {.tag = 75, .level = 30, .buff = "Second writer", .size = strlen("Second writer")};
    pthread_create(&tid5, NULL, send_message, (void *) &args6);
+
+   sleep(2);
+
+   printf("Removal started\n");
+   service_removing();
+   printf("Removal done\n");
+
+   printf("Awakening started\n");
+   threads_awakening();
+   printf("Awakening done\n");
 
    pthread_join(tid0, NULL);
    pthread_join(tid1, NULL);
@@ -216,10 +228,10 @@ void message_exchange() {
 void service_removing() {
    pthread_t tid0, tid1;
 
-   ctl_args args1 = {.tag = 211};
+   ctl_args args1 = {.tag = 210};
    pthread_create(&tid0, NULL, remove_service, (void *) &args1);
 
-   ctl_args args2 = {.tag = 4};
+   ctl_args args2 = {.tag = 97};
    /* Some threads are waiting for a message. Removal not possible */
    pthread_create(&tid1, NULL, remove_service, (void *) &args2);
 
@@ -231,10 +243,10 @@ void service_removing() {
 void threads_awakening() {
    pthread_t tid0, tid1;
 
-   ctl_args args1 = {.tag = 98};
+   ctl_args args1 = {.tag = 97};
    pthread_create(&tid0, NULL, awake_threads, (void *) &args1);
 
-   ctl_args args2 = {.tag = 4};
+   ctl_args args2 = {.tag = 3};
    /* No waiting threads on this service */
    pthread_create(&tid1, NULL, awake_threads, (void *) &args2);
 

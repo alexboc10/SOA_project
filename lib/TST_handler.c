@@ -376,8 +376,12 @@ char *receive_message(int key, int level, char* buffer, size_t size) {
 
    printk("%s: thread %d wants to sleep\n", MODNAME, current->pid);
 
+   read_unlock(&(tag->receive_lock));
+
    /* The thread requests for a sleep, waiting for the message receiving */
    sys_goto_sleep(level_obj);
+
+   read_lock(&(tag->receive_lock));
 
    /* This is the first instruction performed after the awakening */
    printk("%s: thread %d resumed\n", MODNAME, current->pid);
@@ -462,6 +466,9 @@ int awake_all_threads(int key) {
          level_t *level_obj = &(tag->levels[i]);
          while (resumed_pid != 0) {
             resumed_pid = sys_awake(level_obj);
+
+            if (resumed_pid == 0) break;
+
             printk("%s: thread %d woke up at level %d.\n", MODNAME, resumed_pid, i);
          }
 
@@ -516,7 +523,6 @@ int remove_tag(int key) {
    }
 
    /* The tag service structure is deallocated */
-   vfree(tag);
    tst_status[key-1] = 0;
 
    if (first_index_free == -1 || (key-1) < first_index_free) {
