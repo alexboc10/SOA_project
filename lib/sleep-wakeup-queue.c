@@ -144,7 +144,7 @@ awaken:
    preempt_enable();
 
    AUDIT
-   printk("%s: called the awake of thread %d\n", MODNAME, its_pid);
+   printk("%s: called the awakening of thread %d\n", MODNAME, its_pid);
 
    return its_pid;
 }

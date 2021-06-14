@@ -11,7 +11,7 @@
    for the specific purpose of the project */
 
 /* A new message is inserted in the RCU list */
-void rcu_messages_list_init(list_t * list) {
+void rcu_messages_list_init(list_t *list) {
 
    list->epoch = 0;
    list->standing[0] = 0;

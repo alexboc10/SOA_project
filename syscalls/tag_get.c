@@ -45,7 +45,7 @@ create:
    }
 
    /* This function allocates an element in the TST, with 'key' as index
-      and with 'permission' as visibility rule. The return value is the 
+      and with 'permission' as visibility rule. The return value is the
       key itself, useful for the service opening. IPC_PRIVATE as 'key' can
       be used exclusively here to istantiate a service visible just for
       the creator process */
@@ -59,9 +59,9 @@ open:
       return -1;
    }
 
-   /* This function opens an existing tag service with 'key' as index only 
-      if the calling thread has the correct privileges. This time the return 
-      value is the tag service descriptor, useful for tag service operations. 
+   /* This function opens an existing tag service with 'key' as index only
+      if the calling thread has the correct privileges. This time the return
+      value is the tag service descriptor, useful for tag service operations.
       Here IPC_PRIVATE is not available. */
    ret = open_service(key, permission);
    return ret; /* tag or -1 (error) */

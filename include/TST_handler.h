@@ -37,8 +37,8 @@ typedef struct _tag_service {
    int open; /* Is the service open? */
    level_t levels[LEVELS];
    spinlock_t awake_all_lock; /* Spinlock for threads awakening through tag_ctl syscall */
-   spinlock_t send_lock; /* Spinlock for message sendings */
-   spinlock_t receive_lock; /* Spinlock for message receivings */
+   rwlock_t send_lock; /* Read-write lock for message sendings */
+   rwlock_t receive_lock; /* Read-write lock for message receivings */
    spinlock_t level_activation_lock[LEVELS]; /* Spinlock for level initialization */
 } tag_t;
 
@@ -50,7 +50,7 @@ int open_service(int key, int permission);
 
 int send_message(int key, int level, char *buffer, size_t size);
 
-int receive_message(int key, int level, char* buffer, size_t size);
+char *receive_message(int key, int level, char* buffer, size_t size);
 
 int awake_all_threads(int key);
 

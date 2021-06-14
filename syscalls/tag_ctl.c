@@ -36,6 +36,8 @@ awake:
 
    ret = awake_all_threads(tag+1);
 
+   return ret;
+
 remove:
 
    ret = remove_tag(tag+1);
