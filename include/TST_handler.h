@@ -44,6 +44,10 @@ typedef struct _tag_service {
 
 /* ----------- Management functions ----------- */
 
+int get_tag_status(int index);
+
+tag_t *get_tag_service(int index);
+
 int create_service(int key, int permission);
 
 int open_service(int key, int permission);

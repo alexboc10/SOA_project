@@ -4,6 +4,7 @@
 
 #include "include/sys_table_handler.h"
 #include "include/TST_handler.h"
+#include "include/dev_handler.h"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Alessandro Boccini");
@@ -17,6 +18,9 @@ extern int uninstall_syscalls(void);
 extern int TST_alloc(void);
 extern void TST_dealloc(void);
 
+extern int register_dev(void);
+extern void unregister_dev(void);
+
 static int __init install(void) {
 
    /* Initialization of TST operations spinlock */
@@ -29,13 +33,18 @@ static int __init install(void) {
    /* This function installs the new syscalls inside the syscall table */
    install_syscalls();
 
+   register_dev();
+
    return 0;
 }
 
 static void __exit uninstall(void) {
 
    uninstall_syscalls();
+
    TST_dealloc();
+
+   unregister_dev();
 
 }
 

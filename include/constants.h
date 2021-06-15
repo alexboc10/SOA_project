@@ -35,4 +35,6 @@
 
 #define EOPEN -2
 
+#define DEVNAME "TBDE"
+
 #endif

@@ -40,6 +40,26 @@ static volatile int tst_status[TAG_SERVICES_NUM] = {[0 ... (TAG_SERVICES_NUM-1)]
 /* The first TST index free for tag service allocation */
 static volatile int first_index_free = -1;
 
+int get_tag_status(int index) {
+
+   if (index < 0 || index > (TAG_SERVICES_NUM-1)) {
+      return -1;
+   }
+
+   return tst_status[index];
+
+}
+
+tag_t *get_tag_service(int index) {
+
+   if (index < 0 || index > (TAG_SERVICES_NUM-1)) {
+      return NULL;
+   }
+
+   return &(tst[index]);
+
+}
+
 void TST_dealloc(void) {
    vfree(tst);
 }
