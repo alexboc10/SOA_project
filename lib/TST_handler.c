@@ -32,7 +32,7 @@ extern long sys_awake(level_t *);
 
 /* The TST is kept in memory in order to handle the services.
    Every element is a tag_service object */
-static tag_t *tst = NULL;
+static volatile tag_t *tst;
 
 /* This array keeps the usage status of the services */
 static volatile int tst_status[TAG_SERVICES_NUM] = {[0 ... (TAG_SERVICES_NUM-1)] = 0};
@@ -40,24 +40,100 @@ static volatile int tst_status[TAG_SERVICES_NUM] = {[0 ... (TAG_SERVICES_NUM-1)]
 /* The first TST index free for tag service allocation */
 static volatile int first_index_free = -1;
 
-int get_tag_status(int index) {
+char *status_builder(void) {
+   int i, j;
+   int len = 0;
+   tag_t *tag_obj;
+   level_t *level_obj;
 
-   if (index < 0 || index > (TAG_SERVICES_NUM-1)) {
-      return -1;
-   }
+   char *service_status = (char *) vmalloc(sizeof(char) * 8192);
 
-   return tst_status[index];
-
-}
-
-tag_t *get_tag_service(int index) {
-
-   if (index < 0 || index > (TAG_SERVICES_NUM-1)) {
+   if (!service_status) {
+      printk("%s: error while allocating memory with vmalloc.\n", MODNAME);
       return NULL;
    }
 
-   return &(tst[index]);
+   spin_lock(&tst_spinlock);
 
+   strcpy(service_status, "");
+
+   for (i=0; i<TAG_SERVICES_NUM; i++) {
+      if (tst_status[i] == 1) {
+         tag_obj = &(tst[i]);
+
+         printk("%s: key %d\n", MODNAME, tag_obj->key);
+
+         if (tag_obj != NULL) {
+            char tag[4];
+            char creator[16];
+            int key = i+1;
+
+            printk("%s:var key: %d\n", MODNAME, key);
+
+            /* Tag service creator */
+            sprintf(creator, "%d", tag_obj->owner);
+            /* Tag service identifier */
+            sprintf(tag, "%d", key);
+
+            for (j=0; j<LEVELS; j++) {
+               level_obj = &(tag_obj->levels[j]);
+               if (level_obj->active == 1) {
+                  printk("%s:level: %d\n", MODNAME, j);
+
+                  char level[4];
+                  char waiting_threads[4];
+
+                  /* Level considered */
+                  sprintf(level, "%d", j);
+                  /* Waiting threads on the considered tag service level */
+                  sprintf(waiting_threads, "%d", level_obj->waiting_threads);
+
+                  printk("%s: tag: %d - creator: %d - level: %d - waiting_threads: %d\n", MODNAME, key, tag_obj->owner, j, level_obj->waiting_threads);
+
+                  strcat(service_status, tag);
+                  len += sizeof(tag);
+                  strcat(service_status, ", ");
+                  len += sizeof(", ");
+                  strcat(service_status, creator);
+                  len += sizeof(creator);
+                  strcat(service_status, ", ");
+                  len += sizeof(", ");
+                  strcat(service_status, level);
+                  len += sizeof(level);
+                  strcat(service_status, ", ");
+                  len += sizeof(", ");
+                  strcat(service_status, waiting_threads);
+                  len += sizeof(waiting_threads);
+                  strcat(service_status, "\n");
+                  len += sizeof("\n");
+               }
+            }
+         }
+      }
+   }
+
+   service_status[len] = '\0';
+   len = strlen(service_status);
+   spin_unlock(&tst_spinlock);
+
+   if (len == 0) {
+      printk("%s: no active service\n", MODNAME);
+      return "";
+   }
+
+   char *final_status = vmalloc(sizeof(char)*len);
+
+   if (!final_status) {
+      printk("%s: error while allocating memory with vmalloc\n", MODNAME);
+      vfree(service_status);
+      return NULL;
+   }
+
+   strncpy(final_status, service_status, len);
+   final_status[len] = '\0';
+   vfree(service_status);
+
+   return final_status;
 }
 
 void TST_dealloc(void) {
@@ -259,7 +335,7 @@ int send_message(int key, int level, char *buffer, size_t size) {
 
    /* If required, the level object is initialized */
    spin_lock(&(tag->level_activation_lock[level]));
-   if(level_obj->active == 0){
+   if (level_obj->active == 0) {
       /* The level-specific message list is a RCU list */
       rcu_messages_list_init(&(level_obj->msg_list));
 

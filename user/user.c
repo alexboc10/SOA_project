@@ -5,6 +5,9 @@
 #include <string.h>
 #include <syscall.h>
 #include <sys/ipc.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include "../include/constants.h"
 
@@ -33,6 +36,8 @@ typedef struct _ctl_args{
 
 void service_removing();
 void threads_awakening();
+
+int fd;
 
 void *create_service(void *params) {
    int ret;
@@ -173,6 +178,17 @@ void services_opening() {
 
 }
 
+void read_status() {
+   int ret;
+
+   char *buff = (char *) malloc(8192);
+
+   ret = read(fd, buff, 8192);
+
+   printf("%s\n", buff);
+
+}
+
 void message_exchange() {
    pthread_t tid0, tid1, tid2, tid3, tid4, tid5;
 
@@ -198,7 +214,7 @@ void message_exchange() {
    exchange_args args4 = {.tag = 3, .level = 2, .buff = buff4, .size = 32};
    pthread_create(&tid3, NULL, receive_message, (void *) &args4);
 
-   sleep(5);
+   sleep(2);
 
    exchange_args args5 = {.tag = 3, .level = 2, .buff = "First writer", .size = strlen("First writer")};
    pthread_create(&tid4, NULL, send_message, (void *) &args5);
@@ -206,6 +222,10 @@ void message_exchange() {
    /* This writing is discarded: no waiting threads */
    exchange_args args6 = {.tag = 75, .level = 30, .buff = "Second writer", .size = strlen("Second writer")};
    pthread_create(&tid5, NULL, send_message, (void *) &args6);
+
+   sleep(2);
+
+   read_status();
 
    sleep(2);
 
@@ -256,11 +276,16 @@ void threads_awakening() {
 
 void main(int argc, char **argv) {
 
+   fd = open("/dev/TBDE", O_RDONLY);
+
    /* ------ Tests ------ */
    services_creation();
    printf("Creation done\n");
    services_opening();
    printf("Opening done\n");
+
+   sleep(5);
+
    message_exchange();
    printf("Exchanging done\n");
    //service_removing();
@@ -268,5 +293,7 @@ void main(int argc, char **argv) {
    //threads_awakening();
    //printf("Awakening done\n");
    /***********************/
+
+   close(fd);
 
 }
