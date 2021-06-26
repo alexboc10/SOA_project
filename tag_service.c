@@ -26,13 +26,13 @@ static int __init install(void) {
    /* Initialization of TST operations spinlock */
    spin_lock_init(&tst_spinlock);
 
-   /* This function allocates the TST */
+   /* TST allocation */
    TST_alloc();
-   /* This function allows to gather new syscalls addresses */
+   /* New syscalls addresses gathering */
    get_syscalls_addresses();
-   /* This function installs the new syscalls inside the syscall table */
+   /* New syscalls installing */
    install_syscalls();
-
+   /* Char device registering */
    register_dev();
 
    return 0;
@@ -40,10 +40,11 @@ static int __init install(void) {
 
 static void __exit uninstall(void) {
 
+   /* Syscalls uninstalling */
    uninstall_syscalls();
-
+   /* TST deallocation */
    TST_dealloc();
-
+   /* Char device unregistering */
    unregister_dev();
 
 }

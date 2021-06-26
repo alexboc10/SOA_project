@@ -19,7 +19,7 @@ asmlinkage int sys_tag_ctl(int tag, int command) {
    int ret;
 
    if (tag < 0 || tag > (TAG_SERVICES_NUM-1)) {
-      printk("%s: the specified tag is not valid\n", MODNAME);
+      printk("%s: thread %d - the specified tag is not valid\n", MODNAME, current->pid);
       return -1;
    }
 
@@ -28,18 +28,21 @@ asmlinkage int sys_tag_ctl(int tag, int command) {
    } else if (command == REMOVE) {
       goto remove;
    } else {
-      printk("%s: 'command' argument must be AWAKE_ALL (%d) or REMOVE (%d)\n", MODNAME, AWAKE_ALL, REMOVE);
+      printk("%s: thread %d - 'command' argument must be AWAKE_ALL (%d) or REMOVE (%d)\n", MODNAME, current->pid, AWAKE_ALL, REMOVE);
       return -1;
    }
 
 awake:
 
+   /* This function tries to awake all the threads waiting on a specific tag service, if
+      existing. */
    ret = awake_all_threads(tag+1);
 
    return ret;
 
 remove:
 
+   /* This function deallocates, if existing, the specified tag service */
    ret = remove_tag(tag+1);
 
    return ret;

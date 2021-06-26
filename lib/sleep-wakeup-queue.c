@@ -13,9 +13,8 @@
 /* This code is based on Francesco Quaglia example. It has been adapted for the specific
    purpose of the project. */
 
-#define NO (0)
-#define YES (NO+1)
-#define AUDIT if(1)
+#define YES 1
+#define NO 0
 
 long sys_goto_sleep(level_t *level) {
    volatile wq_t me;
@@ -29,7 +28,6 @@ long sys_goto_sleep(level_t *level) {
    me.awake = NO;
    me.already_hit = NO;
 
-   AUDIT
    printk("%s: sys_goto_sleep on strong fifo sleep/wakeup queue called from thread %d\n", MODNAME, current->pid);
 
    preempt_disable();
@@ -57,7 +55,6 @@ sleep:
 
    preempt_enable();
 
-   AUDIT
    printk("%s: thread %d actually going to sleep\n", MODNAME, current->pid);
 
    wait_event_interruptible(the_queue, me.awake == YES);
@@ -87,11 +84,9 @@ sleep:
    spin_unlock(&(level->queue_lock));
    preempt_enable();
 
-   AUDIT
    printk("%s: thread %d exiting sleep for a wakeup or signal\n", MODNAME, current->pid);
 
    if (me.awake == NO) {
-      AUDIT
       printk("%s: thread %d exiting sleep for signal\n", MODNAME, current->pid);
       return -EINTR;
    }
@@ -143,7 +138,6 @@ awaken:
 
    preempt_enable();
 
-   AUDIT
    printk("%s: called the awakening of thread %d\n", MODNAME, its_pid);
 
    return its_pid;

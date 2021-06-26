@@ -23,7 +23,7 @@ asmlinkage int sys_tag_get(int key, int command, int permission) {
    int ret;
 
    if (permission != ONLY_OWNER && permission != ANY) {
-      printk("%s: 'permission' argument must be ONLY_OWNER (%d) or ANY (%d)", MODNAME, ONLY_OWNER, ANY);
+      printk("%s: thread %d - 'permission' argument must be ONLY_OWNER (%d) or ANY (%d)", MODNAME, current->pid, ONLY_OWNER, ANY);
       return -1;
    }
 
@@ -32,7 +32,7 @@ asmlinkage int sys_tag_get(int key, int command, int permission) {
    } else if (command == CMD_OPEN) {
       goto open;
    } else {
-      printk("%s: 'command' argument must be CMD_CREATE (%d) or CMD_OPEN (%d)\n", MODNAME, CMD_CREATE, CMD_OPEN);
+      printk("%s: thread %d - 'command' argument must be CMD_CREATE (%d) or CMD_OPEN (%d)\n", MODNAME, current->pid, CMD_CREATE, CMD_OPEN);
       return -1;
    }
 
@@ -40,7 +40,7 @@ create:
 
    /* IPC_PRIVATE = 0 */
    if (key < 0 || key > TAG_SERVICES_NUM) {
-      printk("%s: 'key' argument must be a positive integer between 1 and %d or IPC_PRIVATE\n", MODNAME, TAG_SERVICES_NUM);
+      printk("%s: thread %d - 'key' argument must be a positive integer between 1 and %d or IPC_PRIVATE\n", MODNAME, current->pid, TAG_SERVICES_NUM);
       return -1;
    }
 
@@ -55,7 +55,7 @@ create:
 open:
 
    if (key <= 0 || key > TAG_SERVICES_NUM) {
-      printk("%s: 'key' argument must be a positive integer between 1 and %d\n", MODNAME, TAG_SERVICES_NUM);
+      printk("%s: thread %d - 'key' argument must be a positive integer between 1 and %d\n", MODNAME, current->pid, TAG_SERVICES_NUM);
       return -1;
    }
 
@@ -67,6 +67,7 @@ open:
    return ret; /* tag or -1 (error) */
 }
 
+/* Useful for syscall installing */
 unsigned long tag_get_addr(void) {
    return (unsigned long) __x64_sys_tag_get;
 }

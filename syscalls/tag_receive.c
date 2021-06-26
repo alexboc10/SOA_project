@@ -21,27 +21,29 @@ asmlinkage int sys_tag_receive(int tag, int level, char *buffer, size_t size) {
    int err;
 
    if (tag < 0 || tag > (TAG_SERVICES_NUM-1)) {
-      printk("%s: the specified tag is not valid\n", MODNAME);
+      printk("%s: thread %d - the specified tag is not valid\n", MODNAME, current->pid);
       return -1;
    }
 
    if (level < 0 || level >= LEVELS) {
-      printk("%s: the specified level is not valid\n", MODNAME);
+      printk("%s: thread %d - the specified level is not valid\n", MODNAME, current->pid);
       return -1;
    }
 
    char kern_buffer[size];
    int dim = sizeof(kern_buffer) / sizeof(kern_buffer[0]);
 
-   printk("%s: kern_buffer allocated\n", MODNAME);
+   printk("%s: thread %d - kern_buffer allocated\n", MODNAME, current->pid);
 
    if ((dim < (int) size) || (size > MAX_MSG_SIZE) || (dim > MAX_MSG_SIZE)) {
-      printk("%s: the size of the message must be lower or equal than buffer size and lower than %d byte\n", MODNAME, MAX_MSG_SIZE);
+      printk("%s: thread %d - -the size of the message must be lower or equal than buffer size and lower than %d byte\n", MODNAME, current->pid, MAX_MSG_SIZE);
       return -1;
    }
 
+   /* Message receiving after a waiting period */
    msg = receive_message(tag+1, level, kern_buffer, size);
 
+   /* If the message exists, it is copied in the user level buffer */
    if (msg != NULL) {
       err = copy_to_user(buffer, msg, size);
       if (err != -1) {

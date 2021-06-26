@@ -225,6 +225,7 @@ void message_exchange() {
 
    sleep(2);
 
+   printf("TAG - Creator - Level - Waiting Threads\n");
    read_status();
 
    sleep(2);

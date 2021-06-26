@@ -20,30 +20,32 @@ asmlinkage int sys_tag_send(int tag, int level, char *buffer, size_t size) {
    int ret, err;
 
    if (tag < 0 || tag > (TAG_SERVICES_NUM-1)) {
-      printk("%s: the specified tag is not valid\n", MODNAME);
+      printk("%s: thread %d - the specified tag is not valid\n", MODNAME, current->pid);
       return -1;
    }
 
    if (level < 0 || level >= LEVELS) {
-      printk("%s: the specified level is not valid\n", MODNAME);
+      printk("%s: thread %d - the specified level is not valid\n", MODNAME, current->pid);
       return -1;
    }
 
    char kern_buffer[size];
    int dim = sizeof(kern_buffer) / sizeof(kern_buffer[0]);
 
-   /* The user buffer data is copied in the kernel buffer */
+   /* The user level buffer data is copied in the kernel level buffer,
+      avoiding to break the ring model rules*/
    err = copy_from_user(kern_buffer, buffer, size);
    if (err == -1) {
-      printk("%s: error in copying data\n", MODNAME);
+      printk("%s: thread %d - error in copying data\n", MODNAME, current->pid);
       return -1;
    }
 
    if ((dim < (int) size) || (size > MAX_MSG_SIZE) || (dim > MAX_MSG_SIZE)) {
-      printk("%s: the size of the message must be lower or equal than buffer size and lower than %d byte\n", MODNAME, MAX_MSG_SIZE);
+      printk("%s: thread %d - the size of the message must be lower or equal than buffer size and lower than %d byte\n", MODNAME, current->pid, MAX_MSG_SIZE);
       return -1;
    }
 
+   /* Message sending to the specified service at the specified level */
    ret = send_message(tag+1, level, kern_buffer, size);
 
    return ret;

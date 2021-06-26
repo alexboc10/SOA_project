@@ -24,6 +24,7 @@ static DEFINE_MUTEX(device_state);
 #define get_minor(session) MINOR(session->f_dentry->d_inode->i_rdev)
 #endif
 
+/* Reading operation */
 static ssize_t dev_read(struct file *filp, char *buff, size_t len, loff_t *off) {
    int ret;
    char status[8192];
@@ -81,6 +82,7 @@ static int dev_release(struct inode *inode, struct file *file) {
 
 }
 
+/* Char device driver */
 static struct file_operations fops = {
   .read = dev_read,
   .open =  dev_open,
@@ -89,6 +91,7 @@ static struct file_operations fops = {
 
 int register_dev(void) {
 
+   /* The major choice is left to the system, that will return it as function output */
    Major = __register_chrdev(0, 0, 256, DEVNAME, &fops);
 
    if (Major < 0) {

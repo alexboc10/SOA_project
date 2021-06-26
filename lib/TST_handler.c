@@ -37,7 +37,7 @@ static volatile tag_t *tst;
 /* This array keeps the usage status of the services */
 static volatile int tst_status[TAG_SERVICES_NUM] = {[0 ... (TAG_SERVICES_NUM-1)] = 0};
 
-/* The first TST index free for tag service allocation */
+/* The first TST index free for tag service allocation. Useful for IPC_PRIVATE services */
 static volatile int first_index_free = -1;
 
 char *status_builder(void) {
@@ -166,14 +166,14 @@ int create_service(int key, int permission) {
    /* The TST is full */
    if (first_index_free == -1) {
       spin_unlock(&tst_spinlock);
-      printk("%s: the TST is full. Allocation failed\n", MODNAME);
+      printk("%s: thread %d - the TST is full. Allocation failed\n", MODNAME, current->pid);
       return -1;
    }
 
    new_service = (tag_t *) vmalloc(sizeof(tag_t));
 
    /* The module istantiates a private tag service, accessible (and, then, openable) 
-      only by the threads of the creator process */
+      only by the threads belonging to the creator process */
    if (key == IPC_PRIVATE) {
       new_service->key = first_index_free;
       /* This is the key the thread can use to open the process-limited service */
@@ -181,8 +181,9 @@ int create_service(int key, int permission) {
       new_service->priv = 1; /* This means the owner checking is required */
    } else {
       if (tst_status[key-1] == 1) {
+         vfree(new_service);
          spin_unlock(&tst_spinlock);
-         printk("%s: the tag service with key %d already exists. Allocation failed\n", MODNAME, key);
+         printk("%s: thread %d - the tag service with key %d already exists. Allocation failed\n", MODNAME, current->pid, key);
          return -1;
       }
 
@@ -204,6 +205,8 @@ int create_service(int key, int permission) {
 
    /* The spinlocks are initialized. They will be useful during the different operations */
    spin_lock_init(&(new_service->awake_all_lock));
+   /* In sending and receiving context a read/write lock is useful in order to distinguish
+      the reading operations from the writing ones. This improves the performances */
    rwlock_init(&(new_service->send_lock));
    rwlock_init(&(new_service->receive_lock));
 
@@ -214,14 +217,15 @@ int create_service(int key, int permission) {
 
       /* Just the minimum needed is initialized for every level */
       spin_lock_init(&(new_service->level_activation_lock[i]));
+      /* Every level is activated only when it is necessary */
       level_obj->active = 0;
    }
 
-   /* Service allocated */
+   /* Service allocation */
    tst[new_service->key] = *new_service;
    tst_status[new_service->key] = 1;
 
-   /* Updating the first free index variable */
+   /* Updating the first_index_free variable */
    for (i=first_index_free+1; i<TAG_SERVICES_NUM; i++) {
       if (tst_status[i] == 0) {
          first_index_free = i;
@@ -234,7 +238,7 @@ int create_service(int key, int permission) {
 
    spin_unlock(&tst_spinlock);
 
-   printk("%s: tag service with key %d correctly created\n", MODNAME, key);
+   printk("%s: thread %d - tag service with key %d correctly created\n", MODNAME, current->pid, key);
 
    /* The return value is the key (not the tag), since
       the service is not still usable */
@@ -247,18 +251,18 @@ int check_privileges(int key) {
 
    /* IPC_PRIVATE used during the istantiation */
    if (the_tag_service->priv == 1 && the_tag_service->owner != current->tgid) {
-      printk("%s: the thread %d cannot use the tag service with key %d\n", MODNAME, current->tgid, key);
+      printk("%s: thread %d - Usage of the tag service with key %d denied\n", MODNAME, current->pid, key);
       return -1;
    }
 
    /* Service not accessible by all the users */
    if (the_tag_service->perm != -1 && the_tag_service->perm != current->cred->uid.val) {
-      printk("%s: the user %d cannot use the tag service with key %d\n", MODNAME, current->cred->uid.val, key);
+      printk("%s: thread %d - the user %d cannot use the tag service with key %d\n", MODNAME, current->pid, current->cred->uid.val, key);
       return -1;
    }
 
    if (the_tag_service->open == 0) {
-      printk("%s: the tag service with key %d is closed\n", MODNAME, key);
+      printk("%s: thread %d - the tag service with key %d is closed\n", MODNAME, current->pid, key);
       return EOPEN;
    }
 
@@ -273,14 +277,13 @@ int open_service(int key, int permission) {
     /* The service does not exist */
    if (tst_status[key-1] == 0) {
       spin_unlock(&tst_spinlock);
-      printk("%s: the key %d does not match any existing tag service. Opening failed\n", MODNAME, key);
+      printk("%s: thread %d - the key %d does not match any existing tag service. Opening failed\n", MODNAME, current->pid, key);
       return -1;
    }
 
    /* If the service is already open, the tag is anyway returned */
    if (check_privileges(key) == -1) {
       spin_unlock(&tst_spinlock);
-      printk("%s: tag service opening with key %d denied\n", MODNAME, key);
       return -1;
    }
 
@@ -291,7 +294,7 @@ int open_service(int key, int permission) {
 
    asm volatile("mfence");
 
-   printk("%s: the service with tag %d is now open\n", MODNAME, key);
+   printk("%s: thread %d - the service with tag %d is now open\n", MODNAME, current->pid, key);
 
    spin_unlock(&tst_spinlock);
 
@@ -308,26 +311,25 @@ int send_message(int key, int level, char *buffer, size_t size) {
    spin_lock(&tst_spinlock);
 
    if (tst_status[key-1] == 0) {
-      printk("%s: the specified tag does not exist. Operation failed\n", MODNAME);
+      printk("%s: thread %d - the specified tag does not exist. Operation failed\n", MODNAME, current->pid);
       spin_unlock(&tst_spinlock);
       return -1;
    }
 
    if ((err = check_privileges(key)) == -1) {
-      printk("%s: sending operation denied\n", MODNAME);
       spin_unlock(&tst_spinlock);
       return -1;
    }
 
    if (err == EOPEN) {
-      printk("%s: the service is closed. It is not usable\n", MODNAME);
       spin_unlock(&tst_spinlock);
       return -1;
    }
 
    tag = &(tst[key-1]);
 
-   /* The order is inverted for access correctness */
+   /* The order is inverted for access correctness. It can't be possible
+      to access to a not existing tag service */
    read_lock(&(tag->send_lock));
    spin_unlock(&tst_spinlock);
 
@@ -362,7 +364,7 @@ int send_message(int key, int level, char *buffer, size_t size) {
    message.msg = (char *) vmalloc(size);
 
    if (!message.msg) {
-      printk("%s: error in memory allocation for sending message\n", MODNAME);
+      printk("%s: thread %d - error in memory allocation for sending message\n", MODNAME, current->pid);
       read_unlock(&(tag->send_lock));
       return -1;
    }
@@ -373,7 +375,7 @@ int send_message(int key, int level, char *buffer, size_t size) {
    spin_lock(&(level_obj->msg_lock));
 
    if (level_obj->waiting_threads == 0) {
-      printk("%s: no waiting threads. The message will not be sent\n", MODNAME);
+      printk("%s: thread %d - no waiting threads. The message will not be sent\n", MODNAME, current->pid);
    } else {
       /* The message sending awakes the waiting threads (that ones on the specific level).
          They will read the message through RCU mechanism */
@@ -382,8 +384,6 @@ int send_message(int key, int level, char *buffer, size_t size) {
       if (res == -1) {
          spin_unlock(&(level_obj->msg_lock));
          read_unlock(&(tag->send_lock));
-
-         printk("%s: error in RCU message insertion\n", MODNAME);
 
          return -1;
       }
@@ -420,19 +420,17 @@ char *receive_message(int key, int level, char* buffer, size_t size) {
    spin_lock(&tst_spinlock);
 
    if (tst_status[key-1] == 0) {
-      printk("%s: the specified tag does not exist. Operation failed\n", MODNAME);
+      printk("%s: thread %d - the specified tag does not exist. Operation failed\n", MODNAME, current->pid);
       spin_unlock(&tst_spinlock);
       return NULL;
    }
 
    if ((err = check_privileges(key)) == -1) {
-      printk("%s: receiving operation denied\n", MODNAME);
       spin_unlock(&tst_spinlock);
       return NULL;
    }
 
    if (err == EOPEN) {
-      printk("%s: the service is closed. It is not usable\n", MODNAME);
       spin_unlock(&tst_spinlock);
       return NULL;
    }
@@ -470,18 +468,15 @@ char *receive_message(int key, int level, char* buffer, size_t size) {
    /* There is one more thread waiting for a message receiving */
    level_obj->waiting_threads++;
 
-   printk("%s: thread %d wants to sleep\n", MODNAME, current->pid);
+   printk("%s: thread %d wants to sleep waiting for a message\n", MODNAME, current->pid);
 
    read_unlock(&(tag->receive_lock));
 
    /* The thread requests for a sleep, waiting for the message receiving */
    sys_goto_sleep(level_obj);
 
+   /* This is the next instruction executed after the awakening (if it happens) */
    read_lock(&(tag->receive_lock));
-
-   /* This is the first instruction performed after the awakening */
-   printk("%s: thread %d resumed\n", MODNAME, current->pid);
-
    spin_lock(&(level_obj->msg_lock));
 
    msg_t *the_msg = level_obj->msg_list.head;
@@ -491,7 +486,7 @@ char *receive_message(int key, int level, char* buffer, size_t size) {
       spin_unlock(&(level_obj->msg_lock));
       asm volatile("mfence");
 
-      printk("%s: no available messages for thread %d\n", MODNAME, current->pid);
+      printk("%s: thread %d - no available messages\n", MODNAME, current->pid);
       level_obj->waiting_threads--;
 
       read_unlock(&(tag->receive_lock));
@@ -507,12 +502,13 @@ char *receive_message(int key, int level, char* buffer, size_t size) {
    /* Actual message copy on thread buffer */
    strncpy(buffer, the_msg->msg, size);
    buffer[size] = '\0';
-   printk("%s: message read by thread %d\n", MODNAME, current->pid);
+   printk("%s: thread %d - message read\n", MODNAME, current->pid);
 
    int reading_threads;
    reading_threads = the_msg->reading_threads-1;
 
-   /* The message has been read by all the interested threads */
+   /* The message has been read by all the interested threads. So it
+      can be removed from the RCU list */
    if (reading_threads == 0) {
       rcu_messages_list_remove(&(level_obj->msg_list), the_msg);
    }
@@ -534,19 +530,17 @@ int awake_all_threads(int key) {
    spin_lock(&tst_spinlock);
 
    if (tst_status[key-1] == 0) {
-      printk("%s: the specified tag does not exist. Operation failed\n", MODNAME);
+      printk("%s: thread %d - the specified tag does not exist. Operation failed\n", MODNAME, current->pid);
       spin_unlock(&tst_spinlock);
       return -1;
    }
 
    if ((err = check_privileges(key)) == -1) {
-      printk("%s: awakening operation denied\n", MODNAME);
       spin_unlock(&tst_spinlock);
       return -1;
    }
 
    if (err == EOPEN) {
-      printk("%s: the service is closed. It is not usable\n", MODNAME);
       spin_unlock(&tst_spinlock);
       return -1;
    }
@@ -555,7 +549,7 @@ int awake_all_threads(int key) {
 
    spin_lock(&(tag->awake_all_lock));
 
-   //check for waiting threads first
+   // Check for waiting threads
    for (i=0; i<LEVELS; i++) {
       resumed_pid = -1;
       if (tag->levels[i].active == 1) {
@@ -567,7 +561,6 @@ int awake_all_threads(int key) {
 
             printk("%s: thread %d woke up at level %d.\n", MODNAME, resumed_pid, i);
          }
-
       }
    }
 
@@ -585,13 +578,12 @@ int remove_tag(int key) {
    spin_lock(&tst_spinlock);
 
    if (tst_status[key-1] == 0) {
-      printk("%s: the specified tag does not exist. Operation failed\n", MODNAME);
+      printk("%s: thread %d - the specified tag does not exist. Operation failed\n", MODNAME, current->pid);
       spin_unlock(&tst_spinlock);
       return -1;
    }
 
    if (check_privileges(key) == -1) {
-      printk("%s: removing operation denied\n", MODNAME);
       spin_unlock(&tst_spinlock);
       return -1;
    }
@@ -603,11 +595,11 @@ int remove_tag(int key) {
    write_lock(&(tag->send_lock));
    write_lock(&(tag->receive_lock));
 
-   //check for waiting threads first
+   // Check for waiting threads
    for (i=0; i<LEVELS; i++) {
       if (tag->levels[i].active == 1) {
          if (tag->levels[i].waiting_threads != 0) {
-            printk("%s: the tag cannot be removed because there are threads waiting for messages at level %d.\n", MODNAME, i);
+            printk("%s: thread %d - the tag cannot be removed because there are threads waiting for messages at level %d.\n", MODNAME, current->pid, i);
             write_unlock(&(tag->send_lock));
             write_unlock(&(tag->receive_lock));
             spin_unlock(&(tag->awake_all_lock));
@@ -621,11 +613,12 @@ int remove_tag(int key) {
    /* The tag service structure is deallocated */
    tst_status[key-1] = 0;
 
+   /* The first_index_free variable is updated */
    if (first_index_free == -1 || (key-1) < first_index_free) {
       first_index_free = key-1;
    }
 
-   printk("%s: the tag has been correctly removed\n", MODNAME);
+   printk("%s: thread %d - the tag has been correctly removed\n", MODNAME, current->pid);
 
    write_unlock(&(tag->receive_lock));
    write_unlock(&(tag->send_lock));
