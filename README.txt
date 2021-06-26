@@ -36,6 +36,6 @@ The user/ directory is an example of user-side service usage. It allocates some 
 opens them, send and receiving messages, removes services and awakes threads. For testing
 purposes some actions generates errors, proving the coherent behaviour of the system.
 
-For the usage of char device it is necessary to choice the Major number bound to it, 
-expressed as constant in include/constants.h. If The value is 0, the system will choice
+For the usage of char device it is necessary to choose the Major number bound to it, 
+expressed as constant in include/constants.h. If The value is 0, the system will choose
 it.
