@@ -37,4 +37,6 @@
 
 #define DEVNAME "TBDE"
 
+#define MAJOR_NM 237
+
 #endif

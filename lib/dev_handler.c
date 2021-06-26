@@ -5,6 +5,7 @@
 #include <linux/version.h>
 #include <linux/vmalloc.h>
 #include <linux/string.h>
+#include <linux/uaccess.h>
 
 #include "../include/constants.h"
 #include "../include/TST_handler.h"
@@ -91,22 +92,24 @@ static struct file_operations fops = {
 
 int register_dev(void) {
 
-   /* The major choice is left to the system, that will return it as function output */
-   Major = __register_chrdev(0, 0, 256, DEVNAME, &fops);
+   /* The major choice is specified */
+   Major = __register_chrdev(MAJOR_NM, 0, 256, DEVNAME, &fops);
 
    if (Major < 0) {
       printk("%s: registering device failed\n", MODNAME);
       return -1;
    }
 
-   printk("%s: new device registered, it is assigned major number %d\n", MODNAME, Major);
+   if (MAJOR_NM != 0) {
+      printk("%s: new device registered, it is assigned major number %d\n", MODNAME, Major);
+   }
 
    return 0;
 }
 
 void unregister_dev(void) {
 
-   unregister_chrdev(Major, DEVNAME);
+   unregister_chrdev(MAJOR_NM, DEVNAME);
 
    return;
 }
